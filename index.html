@@ -1,1 +1,1018 @@
-<!DOCTYPE html><html lang="en"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>RO-ANIME - Search & Stream</title>    <style>        /* ===== ROBUX THEME & GLOBAL STYLES ===== */        :root {            --rbx-bg: #1B1D1E;            --rbx-card-bg: #2E3032;            --rbx-header-bg: #FFFFFF;            --rbx-text-main: #FFFFFF;            --rbx-text-sub: #ADB5BD;            --rbx-accent: #00A2FF; /* Roblox Blue */            --rbx-accent-hover: #0084D1;            --rbx-border: #393B3D;            --rbx-shadow: 0 4px 12px rgba(0,0,0,0.6);        }        body {            margin: 0;            background-color: var(--rbx-bg);            font-family: 'HCo Gotham SSm', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;            color: var(--rbx-text-main);            -webkit-font-smoothing: antialiased;            overflow-x: hidden;        }        /* ===== HEADER ===== */        header {            background-color: var(--rbx-header-bg);            padding: 8px 20px;            display: flex;            align-items: center;            justify-content: space-between;            box-shadow: 0 2px 10px rgba(0,0,0,0.3);            position: sticky;            top: 0;            z-index: 100;        }        .header-left {            display: flex;            align-items: center;            gap: 15px;        }        .logo {            color: #000;            font-weight: 900;            font-size: 20px;            letter-spacing: -1px;            text-transform: uppercase;            text-decoration: none;            cursor: pointer;            display: flex;            align-items: center;            gap: 8px;        }        .logo-gojo {            width: 38px;            height: 38px;            border-radius: 50%;            overflow: hidden;            border: 2px solid #000;            background: #F2F4F5;            display: flex;            align-items: center;            justify-content: center;            flex-shrink: 0;        }        .logo-gojo img {            width: 100%;            height: 100%;            object-fit: cover;        }        .logo-text {            display: flex;            flex-direction: column;            gap: 0;        }        .logo-text span:first-child {            font-size: 18px;            font-weight: 900;            line-height: 1;        }        .logo-text span:last-child {            font-size: 10px;            font-weight: 700;            color: var(--rbx-accent);            letter-spacing: 1px;            line-height: 1;        }        .avatar-container {            width: 42px;            height: 42px;            border-radius: 50%;            overflow: hidden;            border: 2px solid #E5E5E5;            background: #F2F4F5;            cursor: pointer;            transition: transform 0.2s;            box-shadow: 0 2px 4px rgba(0,0,0,0.1);        }        .avatar-container:hover {            transform: scale(1.1);            border-color: var(--rbx-accent);        }        .avatar-container img {            width: 100%;            height: 100%;            object-fit: cover;        }        .search-container {            display: flex;            flex-grow: 1;            max-width: 650px;            margin: 0 25px;            position: relative;        }        .search-container input {            width: 100%;            padding: 10px 18px;            border-radius: 6px;            border: 1px solid #B8B8B8;            background: #F2F4F5;            color: #000;            font-size: 16px;            outline: none;            transition: all 0.2s;        }        .search-container input:focus {            background: #FFFFFF;            border-color: var(--rbx-accent);            box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.2);        }        .search-container button {            position: absolute;            right: 8px;            top: 50%;            transform: translateY(-50%);            background: var(--rbx-accent);            border: none;            color: white;            padding: 6px 12px;            border-radius: 4px;            cursor: pointer;            font-weight: 700;            font-size: 13px;            transition: background 0.2s;        }        .search-container button:hover {            background: var(--rbx-accent-hover);        }        /* ===== HERO BANNER (PC ONLY) ===== */        #heroBanner {            display: none;            width: 100%;            height: 450px;            background: #000;            position: relative;            overflow: hidden;            margin-bottom: 35px;            border-radius: 12px;            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);        }        @media (min-width: 1024px) {            #heroBanner {                display: block;            }        }        .hero-slider-container {            position: relative;            width: 100%;            height: 100%;        }        .hero-slide {            position: absolute;            width: 100%;            height: 100%;            opacity: 0;            transition: opacity 1s ease-in-out;            background-size: cover;            background-position: center 20%;            filter: brightness(1.2) saturate(1.2);        }        .hero-slide.active {            opacity: 1;        }        .hero-slide-overlay {            position: absolute;            top: 0;            left: 0;            width: 100%;            height: 100%;            background: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);            display: flex;            flex-direction: column;            justify-content: center;            padding: 60px;            color: white;        }        .hero-slide-title {            font-size: 42px;            font-weight: 900;            margin: 0 0 15px 0;            color: #FFFFFF;            text-shadow: 0 4px 10px rgba(0,0,0,0.9);            max-width: 600px;            line-height: 1.1;        }        .hero-slide-ep {            font-size: 18px;            color: var(--rbx-accent);            font-weight: 700;            text-shadow: 0 2px 5px rgba(0,0,0,0.8);            background: rgba(0,0,0,0.4);            display: inline-block;            padding: 5px 12px;            border-radius: 4px;            backdrop-filter: blur(4px);        }        .hero-controls {            position: absolute;            bottom: 25px;            right: 40px;            display: flex;            gap: 12px;            align-items: center;            z-index: 10;        }        .hero-nav-btn {            width: 45px;            height: 45px;            border: none;            border-radius: 50%;            background: rgba(255, 255, 255, 0.15);            color: white;            cursor: pointer;            font-size: 20px;            display: flex;            align-items: center;            justify-content: center;            transition: all 0.3s;            backdrop-filter: blur(10px);            border: 1px solid rgba(255,255,255,0.1);        }        .hero-nav-btn:hover {            background: var(--rbx-accent);            transform: scale(1.1);            border-color: transparent;        }        /* ===== IMAGE LOADING SKELETON ===== */        .skeleton-loader {            background: linear-gradient(90deg, #2E3032 0%, #3F4143 50%, #2E3032 100%);            background-size: 200% 100%;            animation: shimmer 1.5s infinite linear;        }        @keyframes shimmer {            0% { background-position: 200% 0; }            100% { background-position: -200% 0; }        }        .card-img-wrapper.loading {            background: #1e1e1e;        }        /* ===== MAIN CONTENT AREAS ===== */        main {            padding: 25px;            max-width: 1500px;            margin: 0 auto;        }        .section-title {            font-size: 24px;            font-weight: 800;            margin: 30px 0 20px 0;            border-bottom: 2px solid var(--rbx-border);            padding-bottom: 12px;            display: flex;            align-items: center;            gap: 10px;        }        .section-title::before {            content: '';            width: 4px;            height: 24px;            background: var(--rbx-accent);            border-radius: 2px;        }        /* ===== GRID LAYOUT ===== */        #grid, #famousGrid {            display: grid;            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));            gap: 20px;            margin-bottom: 50px;        }        /* ===== ROBLOX-STYLE CARD ===== */        .card {            background: var(--rbx-card-bg);            border-radius: 10px;            overflow: hidden;            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);            cursor: pointer;            display: flex;            flex-direction: column;            border: 1px solid rgba(255,255,255,0.05);            box-shadow: var(--rbx-shadow);        }        .card:hover {            transform: translateY(-8px);            border-color: var(--rbx-accent);            box-shadow: 0 12px 24px rgba(0,0,0,0.8);        }        .card-img-wrapper {            position: relative;            width: 100%;            padding-top: 142%;            background: #121212;            overflow: hidden;        }        .card img {            position: absolute;            top: 0;            left: 0;            width: 100%;            height: 100%;            object-fit: cover;            opacity: 0;            transition: opacity 0.5s ease-in-out, transform 0.5s ease;        }        .card:hover img {            transform: scale(1.08);        }        .card img.loaded {            opacity: 1;        }        .card-info {            padding: 12px;        }        .card-title {            font-size: 15px;            font-weight: 700;            white-space: nowrap;            overflow: hidden;            text-overflow: ellipsis;            margin-bottom: 5px;            color: #FFFFFF;        }        .card-meta {            font-size: 12px;            color: var(--rbx-text-sub);            font-weight: 500;        }        /* ===== STREAMING SECTION ===== */        #streamingSection {            display: none;            max-width: 1100px;            margin: 0 auto 50px auto;            animation: fadeIn 0.5s ease-out;        }        @keyframes fadeIn {            from { opacity: 0; transform: translateY(10px); }            to { opacity: 1; transform: translateY(0); }        }        .video-container {            position: relative;            width: 100%;            padding-top: 56.25%;            background: #000;            border-radius: 12px;            overflow: hidden;            box-shadow: 0 20px 50px rgba(0,0,0,0.9);            border: 1px solid var(--rbx-border);        }        .video-container iframe {            position: absolute;            top: 0;            left: 0;            width: 100%;            height: 100%;            border: none;        }        .player-info {            margin-top: 25px;            background: var(--rbx-card-bg);            padding: 25px;            border-radius: 12px;            border: 1px solid var(--rbx-border);            box-shadow: var(--rbx-shadow);        }        .anime-title {            font-size: 28px;            font-weight: 800;            margin: 0 0 10px 0;            color: var(--rbx-accent);        }        .episode-label {            font-size: 18px;            color: var(--rbx-text-sub);            margin-bottom: 25px;            font-weight: 600;        }        .navigation-controls {            display: flex;            gap: 20px;            margin-top: 25px;        }        .nav-btn {            flex: 1;            padding: 14px;            border: none;            border-radius: 6px;            font-weight: 800;            cursor: pointer;            transition: all 0.2s;            display: flex;            align-items: center;            justify-content: center;            font-size: 16px;            text-transform: uppercase;            letter-spacing: 0.5px;        }        .prev-btn { background: #4B4D4F; color: white; }        .prev-btn:hover { background: #5B5D5F; }        .next-btn { background: var(--rbx-accent); color: white; }        .next-btn:hover { background: var(--rbx-accent-hover); box-shadow: 0 0 15px rgba(0, 162, 255, 0.4); }        .nav-btn:disabled { background: #232527; color: #555; cursor: not-allowed; opacity: 0.5; box-shadow: none; }        /* ===== INLINE EPISODE PANEL (OVERLAY) ===== */        #episodeOverlay {            display: none;            position: fixed;            top: 0;            left: 0;            width: 100%;            height: 100%;            background: rgba(0, 0, 0, 0.9);            z-index: 1000;            backdrop-filter: blur(8px);            align-items: center;            justify-content: center;        }        .panel-content {            background: var(--rbx-bg);            width: 95%;            max-width: 850px;            max-height: 85vh;            border-radius: 15px;            position: relative;            display: flex;            flex-direction: column;            box-shadow: 0 25px 60px rgba(0,0,0,0.8);            border: 1px solid var(--rbx-border);            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);        }        @keyframes slideUp {            from { transform: translateY(40px); opacity: 0; }            to { transform: translateY(0); opacity: 1; }        }        .panel-header {            padding: 25px;            border-bottom: 1px solid var(--rbx-border);            display: flex;            justify-content: space-between;            align-items: center;        }        .panel-header h2 { margin: 0; font-size: 22px; color: var(--rbx-accent); font-weight: 800; }        .close-btn { background: #FF4D4D; color: white; border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-weight: 900; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }        .close-btn:hover { transform: rotate(90deg) scale(1.1); }        .panel-body { padding: 25px; overflow-y: auto; flex-grow: 1; }        .episodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }        .episode-item { background: var(--rbx-card-bg); border: 1px solid var(--rbx-border); padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; font-size: 14px; font-weight: 700; transition: all 0.2s; color: #EEE; }        .episode-item:hover { background: var(--rbx-accent); color: white; border-color: var(--rbx-accent); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0, 162, 255, 0.3); }        /* ===== EPISODE LOADING SPINNER ===== */        .episode-loading {            display: flex;            flex-direction: column;            align-items: center;            justify-content: center;            padding: 60px 20px;            gap: 15px;        }        .episode-spinner {            width: 60px;            height: 60px;            border: 5px solid rgba(255,255,255,0.1);            border-top: 5px solid var(--rbx-accent);            border-radius: 50%;            animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;        }        .episode-loading-text {            font-size: 16px;            font-weight: 700;            color: var(--rbx-text-sub);            letter-spacing: 1px;        }        /* ===== LOADER ===== */        #loader { display: none; text-align: center; padding: 40px; }        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.05); border-top: 5px solid var(--rbx-accent); border-radius: 50%; animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite; margin: 0 auto 15px auto; }        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }        /* Responsive Adjustments */        @media (max-width: 600px) {            .logo { font-size: 20px; }            .search-container { margin: 0 10px; }            #grid, #famousGrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }            .anime-title { font-size: 22px; }            .nav-btn { font-size: 14px; padding: 12px; }            .avatar-container { width: 36px; height: 36px; }        }    </style></head><body><header>    <div class="header-left">        <div class="logo" onclick="goHome()">            <div class="logo-gojo">                <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663321093674/oWQUOlviOKwSQlpf.png" alt="Gojo">            </div>            <div class="logo-text">                <span>RO-ANIME</span>                <span>STREAM</span>            </div>        </div>    </div>    <div class="search-container">        <input id="searchInput" type="text" placeholder="Search for your favorite anime...">        <button onclick="searchAnime()">SEARCH</button>    </div></header><main>    <div id="loader">        <div class="spinner"></div>        <p style="font-weight: 700; color: var(--rbx-text-sub);">SUMMONING ANIME...</p>    </div>    <!-- Hero Banner (PC Only) -->    <div id="heroBanner">        <div class="hero-slider-container" id="heroSliderContainer"></div>        <div class="hero-controls">            <button class="hero-nav-btn" onclick="heroPrevSlide()">❮</button>            <button class="hero-nav-btn" onclick="heroNextSlide()">❯</button>        </div>    </div>    <!-- Streaming Player Section -->    <div id="streamingSection">        <button class="nav-btn prev-btn" style="width: auto; margin-bottom: 20px; padding: 10px 20px;" onclick="goHome()">← BACK TO HOME</button>        <div class="video-container">            <iframe id="animePlayer" src="" allowfullscreen scrolling="no"></iframe>        </div>        <div class="player-info">            <h1 id="displayTitle" class="anime-title">Loading...</h1>            <div id="displayEpisode" class="episode-label">Episode --</div>            <div class="navigation-controls">                <button id="prevBtn" class="nav-btn prev-btn" onclick="changeEpisode(-1)">PREVIOUS</button>                <button id="nextBtn" class="nav-btn next-btn" onclick="changeEpisode(1)">NEXT EPISODE</button>            </div>        </div>    </div>    <!-- Search Results Section -->    <div id="searchResultsSection" style="display:none;">        <h2 class="section-title">Search Results</h2>        <div id="grid"></div>    </div>    <!-- Home Page Section -->    <div id="homeSection">        <h2 class="section-title">Trending Anime</h2>        <div id="famousGrid"></div>    </div></main><!-- Episode Overlay --><div id="episodeOverlay">    <div class="panel-content">        <div class="panel-header">            <h2 id="overlayTitle">Anime Title</h2>            <button class="close-btn" onclick="closeOverlay()">&times;</button>        </div>        <div class="panel-body">            <p style="margin-bottom: 20px; color: var(--rbx-text-sub); font-weight: 600;">Choose an episode to watch:</p>            <div id="episodesContainer" class="episodes-grid"></div>        </div>    </div></div><script>    // 100 Verified Anime Dataset    const famousAnime = [        { title: "Sousou no Frieren", image: "https://cdn.myanimelist.net/images/anime/1015/138006.jpg" },        { title: "Sousou no Frieren 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1921/154528.jpg" },        { title: "Fullmetal Alchemist: Brotherhood", image: "https://cdn.myanimelist.net/images/anime/1208/94745.jpg" },        { title: "Chainsaw Man Movie: Reze-hen", image: "https://cdn.myanimelist.net/images/anime/1763/150638.jpg" },        { title: "Steins;Gate", image: "https://cdn.myanimelist.net/images/anime/1935/127974.jpg" },        { title: "Shingeki no Kyojin Season 3 Part 2", image: "https://cdn.myanimelist.net/images/anime/1517/100633.jpg" },        { title: "Gintama: The Final", image: "https://cdn.myanimelist.net/images/anime/1245/116760.jpg" },        { title: "Gintama°", image: "https://cdn.myanimelist.net/images/anime/3/72078.jpg" },        { title: "Hunter x Hunter (2011)", image: "https://cdn.myanimelist.net/images/anime/1337/99013.jpg" },        { title: "Ginga Eiyuu Densetsu", image: "https://cdn.myanimelist.net/images/anime/1976/142016.jpg" },        { title: "Gintama'", image: "https://cdn.myanimelist.net/images/anime/4/50361.jpg" },        { title: "Gintama': Enchousen", image: "https://cdn.myanimelist.net/images/anime/1452/123686.jpg" },        { title: "One Piece Fan Letter", image: "https://cdn.myanimelist.net/images/anime/1455/146229.jpg" },        { title: "Bleach: Sennen Kessen-hen", image: "https://cdn.myanimelist.net/images/anime/1908/135431.jpg" },        { title: "Gintama.", image: "https://cdn.myanimelist.net/images/anime/3/83528.jpg" },        { title: "Kaguya-sama wa Kokurasetai: Ultra Romantic", image: "https://cdn.myanimelist.net/images/anime/1160/122627.jpg" },        { title: "Fruits Basket: The Final", image: "https://cdn.myanimelist.net/images/anime/1085/114792.jpg" },        { title: "Clannad: After Story", image: "https://cdn.myanimelist.net/images/anime/1299/110774.jpg" },        { title: "Gintama", image: "https://cdn.myanimelist.net/images/anime/10/73274.jpg" },        { title: "Koe no Katachi", image: "https://cdn.myanimelist.net/images/anime/1122/96435.jpg" },        { title: "Code Geass: Hangyaku no Lelouch R2", image: "https://cdn.myanimelist.net/images/anime/1088/135089.jpg" },        { title: "Kusuriya no Hitorigoto 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1025/147458.jpg" },        { title: "3-gatsu no Lion 2nd Season", image: "https://cdn.myanimelist.net/images/anime/3/88469.jpg" },        { title: "Gintama Movie 2: Kanketsu-hen - Yorozuya yo Eien Nare", image: "https://cdn.myanimelist.net/images/anime/10/51723.jpg" },        { title: "Monster", image: "https://cdn.myanimelist.net/images/anime/10/18793.jpg" },        { title: "Gintama. Shirogane no Tamashii-hen - Kouhan-sen", image: "https://cdn.myanimelist.net/images/anime/1776/96566.jpg" },        { title: "Owarimonogatari 2nd Season", image: "https://cdn.myanimelist.net/images/anime/6/87322.jpg" },        { title: "Shingeki no Kyojin: The Final Season - Kanketsu-hen", image: "https://cdn.myanimelist.net/images/anime/1279/131078.jpg" },        { title: "Kusuriya no Hitorigoto", image: "https://cdn.myanimelist.net/images/anime/1708/138033.jpg" },        { title: "Kingdom 3rd Season", image: "https://cdn.myanimelist.net/images/anime/1443/111830.jpg" },        { title: "Shingeki no Kyojin Movie: Kanketsu-hen - The Last Attack", image: "https://cdn.myanimelist.net/images/anime/1379/145452.jpg" },        { title: "Violet Evergarden Movie", image: "https://cdn.myanimelist.net/images/anime/1825/110716.jpg" },        { title: "Vinland Saga Season 2", image: "https://cdn.myanimelist.net/images/anime/1170/124312.jpg" },        { title: "Kimi no Na wa.", image: "https://cdn.myanimelist.net/images/anime/5/87048.jpg" },        { title: "Gintama. Shirogane no Tamashii-hen", image: "https://cdn.myanimelist.net/images/anime/12/89603.jpg" },        { title: "Ashita no Joe 2", image: "https://cdn.myanimelist.net/images/anime/3/45028.jpg" },        { title: "Hajime no Ippo", image: "https://cdn.myanimelist.net/images/anime/4/86334.jpg" },        { title: "Kizumonogatari III: Reiketsu-hen", image: "https://cdn.myanimelist.net/images/anime/1084/112813.jpg" },        { title: "Mob Psycho 100 II", image: "https://cdn.myanimelist.net/images/anime/1918/96303.jpg" },        { title: "Shingeki no Kyojin: The Final Season", image: "https://cdn.myanimelist.net/images/anime/1000/110531.jpg" },        { title: "Vinland Saga", image: "https://cdn.myanimelist.net/images/anime/1500/103005.jpg" },        { title: "Sen to Chihiro no Kamikakushi", image: "https://cdn.myanimelist.net/images/anime/6/79597.jpg" },        { title: "Shingeki no Kyojin: The Final Season Part 2", image: "https://cdn.myanimelist.net/images/anime/1948/120625.jpg" },        { title: "Haikyuu!! Karasuno Koukou vs. Shiratorizawa Gakuen Koukou", image: "https://cdn.myanimelist.net/images/anime/7/81992.jpg" },        { title: "Monogatari Series: Second Season", image: "https://cdn.myanimelist.net/images/anime/1807/121534.jpg" },        { title: "Takopii no Genzai", image: "https://cdn.myanimelist.net/images/anime/1182/149879.jpg" },        { title: "Cowboy Bebop", image: "https://cdn.myanimelist.net/images/anime/4/19644.jpg" },        { title: "Bocchi the Rock!", image: "https://cdn.myanimelist.net/images/anime/1448/127956.jpg" },        { title: "Kingdom 4th Season", image: "https://cdn.myanimelist.net/images/anime/1566/122794.jpg" },        { title: "Kingdom 5th Season", image: "https://cdn.myanimelist.net/images/anime/1050/139641.jpg" },        { title: "One Piece", image: "https://cdn.myanimelist.net/images/anime/1244/138851.jpg" },        { title: "86 Part 2", image: "https://cdn.myanimelist.net/images/anime/1321/117508.jpg" },        { title: "Boku no Hero Academia: Final Season", image: "https://cdn.myanimelist.net/images/anime/1959/151055.jpg" },        { title: "Hibike! Euphonium 3", image: "https://cdn.myanimelist.net/images/anime/1216/142086.jpg" },        { title: "Kaguya-sama wa Kokurasetai: First Kiss wa Owaranai", image: "https://cdn.myanimelist.net/images/anime/1670/130060.jpg" },        { title: "Mushishi Zoku Shou 2nd Season", image: "https://cdn.myanimelist.net/images/anime/9/68095.jpg" },        { title: "Chi. Chikyuu no Undou ni Tsuite", image: "https://cdn.myanimelist.net/images/anime/1749/145922.jpg" },        { title: "Code Geass: Hangyaku no Lelouch", image: "https://cdn.myanimelist.net/images/anime/1032/135088.jpg" },        { title: "Jujutsu Kaisen 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1792/138022.jpg" },        { title: "Mob Psycho 100 III", image: "https://cdn.myanimelist.net/images/anime/1228/125011.jpg" },        { title: "Shiguang Dailiren", image: "https://cdn.myanimelist.net/images/anime/1135/114867.jpg" },        { title: "The First Slam Dunk", image: "https://cdn.myanimelist.net/images/anime/1745/129284.jpg" },        { title: "Bleach: Sennen Kessen-hen - Ketsubetsu-tan", image: "https://cdn.myanimelist.net/images/anime/1164/138058.jpg" },        { title: "Boku no Kokoro no Yabai Yatsu 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1643/138581.jpg" },        { title: "Kimetsu no Yaiba: Yuukaku-hen", image: "https://cdn.myanimelist.net/images/anime/1908/120036.jpg" },        { title: "Ikoku Nikki", image: "https://cdn.myanimelist.net/images/anime/1791/154233.jpg" },        { title: "Kingdom 6th Season", image: "https://cdn.myanimelist.net/images/anime/1282/151476.jpg" },        { title: "Rurouni Kenshin: Meiji Kenkaku Romantan - Tsuioku-hen", image: "https://cdn.myanimelist.net/images/anime/1656/137618.jpg" },        { title: "Shouwa Genroku Rakugo Shinjuu: Sukeroku Futatabi-hen", image: "https://cdn.myanimelist.net/images/anime/1493/124765.jpg" },        { title: "Tu Bian Yingxiong X", image: "https://cdn.myanimelist.net/images/anime/1492/150628.jpg" },        { title: "Violet Evergarden", image: "https://cdn.myanimelist.net/images/anime/1795/95088.jpg" },        { title: "Great Teacher Onizuka", image: "https://cdn.myanimelist.net/images/anime/13/11460.jpg" },        { title: "Mushishi Zoku Shou", image: "https://cdn.myanimelist.net/images/anime/13/58533.jpg" },        { title: "Bleach: Sennen Kessen-hen - Soukoku-tan", image: "https://cdn.myanimelist.net/images/anime/1595/144074.jpg" },        { title: "Hajime no Ippo: New Challenger", image: "https://cdn.myanimelist.net/images/anime/8/56617.jpg" },        { title: "Howl no Ugoku Shiro", image: "https://cdn.myanimelist.net/images/anime/1470/138723.jpg" },        { title: "Kimetsu no Yaiba Movie 1: Mugenjou-hen - Akaza Sairai", image: "https://cdn.myanimelist.net/images/anime/1681/148216.jpg" },        { title: "Mo Dao Zu Shi: Wanjie Pian", image: "https://cdn.myanimelist.net/images/anime/1634/116782.jpg" },        { title: "Mononoke Hime", image: "https://cdn.myanimelist.net/images/anime/1355/147277.jpg" },        { title: "Uma Musume: Cinderella Gray Part 2", image: "https://cdn.myanimelist.net/images/anime/1120/152280.jpg" },        { title: "Monogatari Series: Off & Monster Season", image: "https://cdn.myanimelist.net/images/anime/1142/146776.jpg" },        { title: "Mushishi", image: "https://cdn.myanimelist.net/images/anime/2/73862.jpg" },        { title: "Shigatsu wa Kimi no Uso", image: "https://cdn.myanimelist.net/images/anime/1405/143284.jpg" },        { title: "Shiguang Dailiren II", image: "https://cdn.myanimelist.net/images/anime/1897/137108.jpg" },        { title: "Shingeki no Kyojin Season 3", image: "https://cdn.myanimelist.net/images/anime/1173/92110.jpg" },        { title: "Tengen Toppa Gurren Lagann", image: "https://cdn.myanimelist.net/images/anime/4/5123.jpg" },        { title: "Tian Guan Cifu Er", image: "https://cdn.myanimelist.net/images/anime/1203/139210.jpg" },        { title: "Uma Musume: Pretty Derby - Shin Jidai no Tobira", image: "https://cdn.myanimelist.net/images/anime/1427/142210.jpg" },        { title: "Fate/stay night Movie: Heaven's Feel - III. Spring Song", image: "https://cdn.myanimelist.net/images/anime/1142/112957.jpg" },        { title: "Made in Abyss", image: "https://cdn.myanimelist.net/images/anime/6/86733.jpg" },        { title: "Natsume Yuujinchou Shi", image: "https://cdn.myanimelist.net/images/anime/3/37449.jpg" },        { title: "Odd Taxi", image: "https://cdn.myanimelist.net/images/anime/1981/113348.jpg" },        { title: "Ping Pong the Animation", image: "https://cdn.myanimelist.net/images/anime/1586/146565.jpg" },        { title: "Cyberpunk: Edgerunners", image: "https://cdn.myanimelist.net/images/anime/1818/126435.jpg" },        { title: "Death Note", image: "https://cdn.myanimelist.net/images/anime/1079/138100.jpg" },        { title: "Haikyuu!! Second Season", image: "https://cdn.myanimelist.net/images/anime/9/76662.jpg" },        { title: "Look Back", image: "https://cdn.myanimelist.net/images/anime/1716/142633.jpg" },        { title: "Luo Xiaohei Zhanji 2", image: "https://cdn.myanimelist.net/images/anime/1288/151853.jpg" }    ];    let currentStreamData = {};    let currentHeroIndex = 0;    let heroSlides = [];    // Initialize hero banner with 120 random episodes    function initHeroBanner() {        const container = document.getElementById("heroSliderContainer");        container.innerHTML = "";        heroSlides = [];        for (let i = 1; i <= 120; i++) {            const randomAnime = famousAnime[Math.floor(Math.random() * famousAnime.length)];            heroSlides.push({                title: randomAnime.title,                image: randomAnime.image,                episode: Math.floor(Math.random() * 24) + 1            });        }        heroSlides.forEach((slide, index) => {            const slideEl = document.createElement("div");            slideEl.className = `hero-slide ${index === 0 ? 'active' : ''}`;            slideEl.style.backgroundImage = `url('${slide.image}')`;            slideEl.innerHTML = `                <div class="hero-slide-overlay">                    <div class="hero-slide-title">${slide.title}</div>                    <div class="hero-slide-ep">Episode ${slide.episode}</div>                </div>            `;            container.appendChild(slideEl);        });        setInterval(heroNextSlide, 6000);    }    function heroNextSlide() {        currentHeroIndex = (currentHeroIndex + 1) % heroSlides.length;        updateHeroSlide();    }    function heroPrevSlide() {        currentHeroIndex = (currentHeroIndex - 1 + heroSlides.length) % heroSlides.length;        updateHeroSlide();    }    function updateHeroSlide() {        const slides = document.querySelectorAll(".hero-slide");        slides.forEach((slide, index) => {            slide.classList.toggle("active", index === currentHeroIndex);        });    }    // Initialize home page    async function initHome() {        const grid = document.getElementById("famousGrid");        grid.innerHTML = "";        const fragment = document.createDocumentFragment();        famousAnime.forEach(anime => {            fragment.appendChild(createCard(anime, true));        });        grid.appendChild(fragment);        initHeroBanner();    }    function createCard(element, isStatic = false) {        const card = document.createElement("div");        card.className = "card";        const imgWrapper = document.createElement("div");        imgWrapper.className = "card-img-wrapper skeleton-loader";        const img = document.createElement("img");                // Improved image loading logic        img.onload = () => {            imgWrapper.classList.remove("skeleton-loader");            img.classList.add("loaded");        };        img.onerror = () => {            // Fallback for broken images            imgWrapper.classList.remove("skeleton-loader");            imgWrapper.style.background = "#333";            imgWrapper.innerHTML = `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;color:#666;text-align:center;">IMAGE<br>UNAVAILABLE</div>`;        };                // Support different image property names from different API versions        // The Django view uses "poster" for search results and "image" for the famous list        const imageUrl = element.poster || element.image || element.thumbnail || element.img || "";                // Use a small delay to ensure skeleton is visible for a moment        setTimeout(() => {            if (imageUrl) {                img.src = imageUrl;            } else {                img.dispatchEvent(new Event('error'));            }        }, 100);        imgWrapper.appendChild(img);        const info = document.createElement("div");        info.className = "card-info";        const title = document.createElement("div");        title.className = "card-title";        title.textContent = element.title;        const meta = document.createElement("div");        meta.className = "card-meta";        meta.textContent = "Series • HD";        info.appendChild(title);        info.appendChild(meta);        card.appendChild(imgWrapper);        card.appendChild(info);        card.addEventListener("click", () => {            if (isStatic) {                document.getElementById("searchInput").value = element.title;                searchAnime();            } else {                fetchEpisodes(element);            }        });        return card;    }    async function searchAnime() {        const query = document.getElementById("searchInput").value;        if (!query) return;        const grid = document.getElementById("grid");        const loader = document.getElementById("loader");        grid.innerHTML = "";        loader.style.display = "block";        document.getElementById("searchResultsSection").style.display = "block";        document.getElementById("homeSection").style.display = "none";        document.getElementById("streamingSection").style.display = "none";        document.getElementById("heroBanner").style.display = "none";        try {            const response = await fetch("https://anime-search-api-4.onrender.com/api/v1/search/?format=json", {                method: "POST",                headers: { "Content-Type": "application/json" },                body: JSON.stringify({ query: query })            });            const Data = await response.json();            loader.style.display = "none";            const commonAnime = ["One Piece", "Bleach", "Black Clover", "Jujutsu Kaisen", "Naruto", "Boruto"];            const lowerQuery = query.toLowerCase();            if (Data.results && Data.results.length > 0) {                const fragment = document.createDocumentFragment();                let resultsFound = false;                Data.results.forEach(element => {                    const lowerTitle = element.title.toLowerCase();                    const isCommon = commonAnime.some(common => lowerTitle.includes(common.toLowerCase()));                    if (!isCommon || lowerTitle.includes(lowerQuery)) {                        fragment.appendChild(createCard(element));                        resultsFound = true;                    }                });                if (resultsFound) {                    grid.appendChild(fragment);                } else {                    grid.innerHTML = `<p style='grid-column: 1/-1; text-align: center; padding: 40px; color: #888;'>No relevant results for "${query}".</p>`;                }            } else {                grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; padding: 40px; color: #888;'>No results found.</p>";            }        } catch (error) {            loader.style.display = "none";            grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #FF4D4D; padding: 40px;'>Error: API connection failed.</p>";        }    }    async function fetchEpisodes(anime) {        const overlay = document.getElementById("episodeOverlay");        const container = document.getElementById("episodesContainer");        container.innerHTML = `            <div class="episode-loading">                <div class="episode-spinner"></div>                <div class="episode-loading-text">LOADING EPISODES...</div>            </div>        `;        document.getElementById("overlayTitle").textContent = anime.title;        overlay.style.display = "flex";        try {            const response = await fetch(`https://anime-search-api-4.onrender.com/api/v1/list/${anime.anime_id}`);            const data = await response.json();            container.innerHTML = "";            if (data.episode_data && data.episode_data.length > 0) {                data.episode_data.forEach(ep => {                    const epBox = document.createElement("div");                    epBox.className = "episode-item";                    epBox.textContent = `EP ${ep.episode_number}`;                    epBox.addEventListener("click", () => startStreaming(anime, ep, data.episode_data));                    container.appendChild(epBox);                });            } else {                container.innerHTML = "<p style='text-align: center; padding: 30px; color: #888;'>No episodes found for this anime.</p>";            }        } catch (error) {            container.innerHTML = "<p style='color:#FF4D4D; text-align: center; padding: 30px;'>Error fetching episodes. Please try again.</p>";        }    }    async function startStreaming(anime, episode, allEpisodes) {        closeOverlay();        document.getElementById("searchResultsSection").style.display = "none";        document.getElementById("homeSection").style.display = "none";        document.getElementById("heroBanner").style.display = "none";        document.getElementById("streamingSection").style.display = "block";        currentStreamData = {            id: episode.episode_id,            title: anime.title,            ep: parseInt(episode.episode_number),            episodes: allEpisodes        };        try {            const slug = `${episode.episode_id}-japanese`;            const response = await fetch(`https://anime-search-api-4.onrender.com/api/v1/stream/${slug}`);            const streamUrl = await response.json();            document.getElementById('animePlayer').src = streamUrl;            updatePlayerUI();        } catch (error) {            alert("Failed to load stream.");        }        window.scrollTo({ top: 0, behavior: 'smooth' });    }    function updatePlayerUI() {        document.getElementById('displayTitle').textContent = currentStreamData.title;        document.getElementById('displayEpisode').textContent = `Episode ${currentStreamData.ep}`;        document.getElementById('prevBtn').disabled = (currentStreamData.ep <= 1);        document.getElementById('nextBtn').disabled = (currentStreamData.ep >= currentStreamData.episodes.length);    }    function changeEpisode(delta) {        const nextEpNum = currentStreamData.ep + delta;        const nextEp = currentStreamData.episodes.find(e => parseInt(e.episode_number) === nextEpNum);        if (nextEp) {            startStreaming({title: currentStreamData.title}, nextEp, currentStreamData.episodes);        }    }    function goHome() {        document.getElementById("streamingSection").style.display = "none";        document.getElementById("searchResultsSection").style.display = "none";        document.getElementById("homeSection").style.display = "block";        if (window.innerWidth >= 1024) {            document.getElementById("heroBanner").style.display = "block";        }        document.getElementById("searchInput").value = "";        document.getElementById('animePlayer').src = "";    }    function closeOverlay() { document.getElementById("episodeOverlay").style.display = "none"; }    document.getElementById("searchInput").addEventListener("keypress", (e) => { if (e.key === "Enter") searchAnime(); });    initHome();</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RO-ANIME - Search & Stream</title>
+    <style>
+        /* ===== ROBUX THEME & GLOBAL STYLES ===== */
+        :root {
+            --rbx-bg: #1B1D1E;
+            --rbx-card-bg: #2E3032;
+            --rbx-header-bg: #FFFFFF;
+            --rbx-text-main: #FFFFFF;
+            --rbx-text-sub: #ADB5BD;
+            --rbx-accent: #00A2FF; /* Roblox Blue */
+            --rbx-accent-hover: #0084D1;
+            --rbx-border: #393B3D;
+            --rbx-shadow: 0 4px 12px rgba(0,0,0,0.6);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--rbx-bg);
+            font-family: 'HCo Gotham SSm', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--rbx-text-main);
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            background-color: var(--rbx-header-bg);
+            padding: 8px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            color: #000;
+            font-weight: 900;
+            font-size: 20px;
+            letter-spacing: -1px;
+            text-transform: uppercase;
+            text-decoration: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo-gojo {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #000;
+            background: #F2F4F5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .logo-gojo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .logo-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .logo-text span:first-child {
+            font-size: 18px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .logo-text span:last-child {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--rbx-accent);
+            letter-spacing: 1px;
+            line-height: 1;
+        }
+
+        .avatar-container {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #E5E5E5;
+            background: #F2F4F5;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .avatar-container:hover {
+            transform: scale(1.1);
+            border-color: var(--rbx-accent);
+        }
+
+        .avatar-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .search-container {
+            display: flex;
+            flex-grow: 1;
+            max-width: 650px;
+            margin: 0 25px;
+            position: relative;
+        }
+
+        .search-container input {
+            width: 100%;
+            padding: 10px 18px;
+            border-radius: 6px;
+            border: 1px solid #B8B8B8;
+            background: #F2F4F5;
+            color: #000;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-container input:focus {
+            background: #FFFFFF;
+            border-color: var(--rbx-accent);
+            box-shadow: 0 0 0 2px rgba(0, 162, 255, 0.2);
+        }
+
+        .search-container button {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--rbx-accent);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .search-container button:hover {
+            background: var(--rbx-accent-hover);
+        }
+
+        /* ===== HERO BANNER (PC ONLY) ===== */
+        #heroBanner {
+            display: none;
+            width: 100%;
+            height: 450px;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 35px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+        }
+
+        @media (min-width: 1024px) {
+            #heroBanner {
+                display: block;
+            }
+        }
+
+        .hero-slider-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hero-slide {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            background-size: cover;
+            background-position: center 20%;
+            filter: brightness(1.2) saturate(1.2);
+        }
+
+        .hero-slide.active {
+            opacity: 1;
+        }
+
+        .hero-slide-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 60%, transparent 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px;
+            color: white;
+        }
+
+        .hero-slide-title {
+            font-size: 42px;
+            font-weight: 900;
+            margin: 0 0 15px 0;
+            color: #FFFFFF;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.9);
+            max-width: 600px;
+            line-height: 1.1;
+        }
+
+        .hero-slide-ep {
+            font-size: 18px;
+            color: var(--rbx-accent);
+            font-weight: 700;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.4);
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+        }
+
+        .hero-controls {
+            position: absolute;
+            bottom: 25px;
+            right: 40px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .hero-nav-btn {
+            width: 45px;
+            height: 45px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .hero-nav-btn:hover {
+            background: var(--rbx-accent);
+            transform: scale(1.1);
+            border-color: transparent;
+        }
+
+        /* ===== IMAGE LOADING SKELETON ===== */
+        .skeleton-loader {
+            background: linear-gradient(90deg, #2E3032 0%, #3F4143 50%, #2E3032 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .card-img-wrapper.loading {
+            background: #1e1e1e;
+        }
+
+        /* ===== MAIN CONTENT AREAS ===== */
+        main {
+            padding: 25px;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 30px 0 20px 0;
+            border-bottom: 2px solid var(--rbx-border);
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--rbx-accent);
+            border-radius: 2px;
+        }
+
+        /* ===== GRID LAYOUT ===== */
+        #grid, #famousGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 20px;
+            margin-bottom: 50px;
+        }
+
+        /* ===== ROBLOX-STYLE CARD ===== */
+        .card {
+            background: var(--rbx-card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: var(--rbx-shadow);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            border-color: var(--rbx-accent);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.8);
+        }
+
+        .card-img-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 142%;
+            background: #121212;
+            overflow: hidden;
+        }
+
+        .card img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .card:hover img {
+            transform: scale(1.08);
+        }
+
+        .card-info {
+            padding: 12px;
+            background: var(--rbx-card-bg);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-title {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--rbx-text-main);
+            margin-bottom: 6px;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: var(--rbx-text-sub);
+            font-weight: 600;
+        }
+
+        /* ===== STREAMING SECTION ===== */
+        #streamingSection {
+            display: none;
+        }
+
+        .video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 25px;
+            box-shadow: var(--rbx-shadow);
+        }
+
+        .video-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .player-info {
+            background: var(--rbx-card-bg);
+            padding: 25px;
+            border-radius: 10px;
+            border: 1px solid var(--rbx-border);
+        }
+
+        .anime-title {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--rbx-text-main);
+        }
+
+        .episode-label {
+            color: var(--rbx-accent);
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+
+        .navigation-controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            background: var(--rbx-accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+            transition: all 0.2s;
+            flex: 1;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: var(--rbx-accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 162, 255, 0.3);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ===== EPISODE OVERLAY ===== */
+        #episodeOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .panel-content {
+            background: var(--rbx-card-bg);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+            border: 1px solid var(--rbx-border);
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(40px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .panel-header {
+            padding: 25px;
+            border-bottom: 1px solid var(--rbx-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h2 { margin: 0; font-size: 22px; color: var(--rbx-accent); font-weight: 800; }
+        .close-btn { background: #FF4D4D; color: white; border: none; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-weight: 900; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; }
+        .close-btn:hover { transform: rotate(90deg) scale(1.1); }
+        .panel-body { padding: 25px; overflow-y: auto; flex-grow: 1; }
+        .episodes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; }
+        .episode-item { background: var(--rbx-card-bg); border: 1px solid var(--rbx-border); padding: 12px; border-radius: 8px; text-align: center; cursor: pointer; font-size: 14px; font-weight: 700; transition: all 0.2s; color: #EEE; }
+        .episode-item:hover { background: var(--rbx-accent); color: white; border-color: var(--rbx-accent); transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0, 162, 255, 0.3); }
+
+        /* ===== EPISODE LOADING SPINNER ===== */
+        .episode-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            gap: 15px;
+        }
+
+        .episode-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255,255,255,0.1);
+            border-top: 5px solid var(--rbx-accent);
+            border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+        }
+
+        .episode-loading-text {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--rbx-text-sub);
+            letter-spacing: 1px;
+        }
+
+        /* ===== LOADER ===== */
+        #loader { display: none; text-align: center; padding: 40px; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.05); border-top: 5px solid var(--rbx-accent); border-radius: 50%; animation: spin 0.8s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite; margin: 0 auto 15px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Responsive Adjustments */
+        @media (max-width: 600px) {
+            .logo { font-size: 20px; }
+            .search-container { margin: 0 10px; }
+            #grid, #famousGrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+            .anime-title { font-size: 22px; }
+            .nav-btn { font-size: 14px; padding: 12px; }
+            .avatar-container { width: 36px; height: 36px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-left">
+        <div class="logo" onclick="goHome()">
+            <div class="logo-gojo">
+                <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663321093674/oWQUOlviOKwSQlpf.png" alt="Gojo">
+            </div>
+            <div class="logo-text">
+                <span>RO-ANIME</span>
+                <span>STREAM</span>
+            </div>
+        </div>
+    </div>
+    <div class="search-container">
+        <input id="searchInput" type="text" placeholder="Search for your favorite anime...">
+        <button onclick="searchAnime()">SEARCH</button>
+    </div>
+</header>
+
+<main>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p style="font-weight: 700; color: var(--rbx-text-sub);">SUMMONING ANIME...</p>
+    </div>
+
+    <!-- Hero Banner (PC Only) -->
+    <div id="heroBanner">
+        <div class="hero-slider-container" id="heroSliderContainer"></div>
+        <div class="hero-controls">
+            <button class="hero-nav-btn" onclick="heroPrevSlide()">❮</button>
+            <button class="hero-nav-btn" onclick="heroNextSlide()">❯</button>
+        </div>
+    </div>
+
+    <!-- Streaming Player Section -->
+    <div id="streamingSection">
+        <button class="nav-btn prev-btn" style="width: auto; margin-bottom: 20px; padding: 10px 20px;" onclick="goHome()">← BACK TO HOME</button>
+        <div class="video-container">
+            <iframe id="animePlayer" src="" allowfullscreen scrolling="no"></iframe>
+        </div>
+        <div class="player-info">
+            <h1 id="displayTitle" class="anime-title">Loading...</h1>
+            <div id="displayEpisode" class="episode-label">Episode --</div>
+            <div class="navigation-controls">
+                <button id="prevBtn" class="nav-btn prev-btn" onclick="changeEpisode(-1)">PREVIOUS</button>
+                <button id="nextBtn" class="nav-btn next-btn" onclick="changeEpisode(1)">NEXT EPISODE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Results Section -->
+    <div id="searchResultsSection" style="display:none;">
+        <h2 class="section-title">Search Results</h2>
+        <div id="grid"></div>
+    </div>
+
+    <!-- Home Page Section -->
+    <div id="homeSection">
+        <h2 class="section-title">Trending Anime</h2>
+        <div id="famousGrid"></div>
+    </div>
+</main>
+
+<!-- Episode Overlay -->
+<div id="episodeOverlay">
+    <div class="panel-content">
+        <div class="panel-header">
+            <h2 id="overlayTitle">Anime Title</h2>
+            <button class="close-btn" onclick="closeOverlay()">&times;</button>
+        </div>
+        <div class="panel-body">
+            <p style="margin-bottom: 20px; color: var(--rbx-text-sub); font-weight: 600;">Choose an episode to watch:</p>
+            <div id="episodesContainer" class="episodes-grid"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 100 Verified Anime Dataset
+    const famousAnime = [
+        { title: "Sousou no Frieren", image: "https://cdn.myanimelist.net/images/anime/1015/138006.jpg" },
+        { title: "Sousou no Frieren 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1921/154528.jpg" },
+        { title: "Fullmetal Alchemist: Brotherhood", image: "https://cdn.myanimelist.net/images/anime/1208/94745.jpg" },
+        { title: "Chainsaw Man Movie: Reze-hen", image: "https://cdn.myanimelist.net/images/anime/1763/150638.jpg" },
+        { title: "Steins;Gate", image: "https://cdn.myanimelist.net/images/anime/1935/127974.jpg" },
+        { title: "Shingeki no Kyojin Season 3 Part 2", image: "https://cdn.myanimelist.net/images/anime/1517/100633.jpg" },
+        { title: "Gintama: The Final", image: "https://cdn.myanimelist.net/images/anime/1245/116760.jpg" },
+        { title: "Gintama°", image: "https://cdn.myanimelist.net/images/anime/3/72078.jpg" },
+        { title: "Hunter x Hunter (2011)", image: "https://cdn.myanimelist.net/images/anime/1337/99013.jpg" },
+        { title: "Ginga Eiyuu Densetsu", image: "https://cdn.myanimelist.net/images/anime/1976/142016.jpg" },
+        { title: "Gintama'", image: "https://cdn.myanimelist.net/images/anime/4/50361.jpg" },
+        { title: "Gintama': Enchousen", image: "https://cdn.myanimelist.net/images/anime/1452/123686.jpg" },
+        { title: "One Piece Fan Letter", image: "https://cdn.myanimelist.net/images/anime/1455/146229.jpg" },
+        { title: "Bleach: Sennen Kessen-hen", image: "https://cdn.myanimelist.net/images/anime/1908/135431.jpg" },
+        { title: "Gintama.", image: "https://cdn.myanimelist.net/images/anime/3/83528.jpg" },
+        { title: "Kaguya-sama wa Kokurasetai: Ultra Romantic", image: "https://cdn.myanimelist.net/images/anime/1160/122627.jpg" },
+        { title: "Fruits Basket: The Final", image: "https://cdn.myanimelist.net/images/anime/1085/114792.jpg" },
+        { title: "Clannad: After Story", image: "https://cdn.myanimelist.net/images/anime/1299/110774.jpg" },
+        { title: "Gintama", image: "https://cdn.myanimelist.net/images/anime/10/73274.jpg" },
+        { title: "Koe no Katachi", image: "https://cdn.myanimelist.net/images/anime/1122/96435.jpg" },
+        { title: "Code Geass: Hangyaku no Lelouch R2", image: "https://cdn.myanimelist.net/images/anime/1088/135089.jpg" },
+        { title: "Kusuriya no Hitorigoto 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1025/147458.jpg" },
+        { title: "3-gatsu no Lion 2nd Season", image: "https://cdn.myanimelist.net/images/anime/3/88469.jpg" },
+        { title: "Gintama Movie 2: Kanketsu-hen - Yorozuya yo Eien Nare", image: "https://cdn.myanimelist.net/images/anime/10/51723.jpg" },
+        { title: "Monster", image: "https://cdn.myanimelist.net/images/anime/10/18793.jpg" },
+        { title: "Gintama. Shirogane no Tamashii-hen - Kouhan-sen", image: "https://cdn.myanimelist.net/images/anime/1776/96566.jpg" },
+        { title: "Owarimonogatari 2nd Season", image: "https://cdn.myanimelist.net/images/anime/6/87322.jpg" },
+        { title: "Shingeki no Kyojin: The Final Season - Kanketsu-hen", image: "https://cdn.myanimelist.net/images/anime/1279/131078.jpg" },
+        { title: "Kusuriya no Hitorigoto", image: "https://cdn.myanimelist.net/images/anime/1708/138033.jpg" },
+        { title: "Kingdom 3rd Season", image: "https://cdn.myanimelist.net/images/anime/1443/111830.jpg" },
+        { title: "Shingeki no Kyojin Movie: Kanketsu-hen - The Last Attack", image: "https://cdn.myanimelist.net/images/anime/1379/145452.jpg" },
+        { title: "Violet Evergarden Movie", image: "https://cdn.myanimelist.net/images/anime/1825/110716.jpg" },
+        { title: "Vinland Saga Season 2", image: "https://cdn.myanimelist.net/images/anime/1170/124312.jpg" },
+        { title: "Kimi no Na wa.", image: "https://cdn.myanimelist.net/images/anime/5/87048.jpg" },
+        { title: "Gintama. Shirogane no Tamashii-hen", image: "https://cdn.myanimelist.net/images/anime/12/89603.jpg" },
+        { title: "Ashita no Joe 2", image: "https://cdn.myanimelist.net/images/anime/3/45028.jpg" },
+        { title: "Hajime no Ippo", image: "https://cdn.myanimelist.net/images/anime/4/86334.jpg" },
+        { title: "Kizumonogatari III: Reiketsu-hen", image: "https://cdn.myanimelist.net/images/anime/1084/112813.jpg" },
+        { title: "Mob Psycho 100 II", image: "https://cdn.myanimelist.net/images/anime/1918/96303.jpg" },
+        { title: "Shingeki no Kyojin: The Final Season Part 2", image: "https://cdn.myanimelist.net/images/anime/1440/127072.jpg" },
+        { title: "Kingdom 5th Season", image: "https://cdn.myanimelist.net/images/anime/1050/139641.jpg" },
+        { title: "One Piece", image: "https://cdn.myanimelist.net/images/anime/1244/138851.jpg" },
+        { title: "86 Part 2", image: "https://cdn.myanimelist.net/images/anime/1321/117508.jpg" },
+        { title: "Boku no Hero Academia: Final Season", image: "https://cdn.myanimelist.net/images/anime/1959/151055.jpg" },
+        { title: "Hibike! Euphonium 3", image: "https://cdn.myanimelist.net/images/anime/1216/142086.jpg" },
+        { title: "Kaguya-sama wa Kokurasetai: First Kiss wa Owaranai", image: "https://cdn.myanimelist.net/images/anime/1670/130060.jpg" },
+        { title: "Mushishi Zoku Shou 2nd Season", image: "https://cdn.myanimelist.net/images/anime/9/68095.jpg" },
+        { title: "Chi. Chikyuu no Undou ni Tsuite", image: "https://cdn.myanimelist.net/images/anime/1749/145922.jpg" },
+        { title: "Code Geass: Hangyaku no Lelouch", image: "https://cdn.myanimelist.net/images/anime/1032/135088.jpg" },
+        { title: "Jujutsu Kaisen 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1792/138022.jpg" },
+        { title: "Mob Psycho 100 III", image: "https://cdn.myanimelist.net/images/anime/1228/125011.jpg" },
+        { title: "Shiguang Dailiren", image: "https://cdn.myanimelist.net/images/anime/1135/114867.jpg" },
+        { title: "The First Slam Dunk", image: "https://cdn.myanimelist.net/images/anime/1745/129284.jpg" },
+        { title: "Bleach: Sennen Kessen-hen - Ketsubetsu-tan", image: "https://cdn.myanimelist.net/images/anime/1164/138058.jpg" },
+        { title: "Boku no Kokoro no Yabai Yatsu 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1643/138581.jpg" },
+        { title: "Kimetsu no Yaiba: Yuukaku-hen", image: "https://cdn.myanimelist.net/images/anime/1908/120036.jpg" },
+        { title: "Ikoku Nikki", image: "https://cdn.myanimelist.net/images/anime/1791/154233.jpg" },
+        { title: "Kingdom 6th Season", image: "https://cdn.myanimelist.net/images/anime/1282/151476.jpg" },
+        { title: "Rurouni Kenshin: Meiji Kenkaku Romantan - Tsuioku-hen", image: "https://cdn.myanimelist.net/images/anime/1656/137618.jpg" },
+        { title: "Shouwa Genroku Rakugo Shinjuu: Sukeroku Futatabi-hen", image: "https://cdn.myanimelist.net/images/anime/1493/124765.jpg" },
+        { title: "Tu Bian Yingxiong X", image: "https://cdn.myanimelist.net/images/anime/1492/150628.jpg" },
+        { title: "Violet Evergarden", image: "https://cdn.myanimelist.net/images/anime/1795/95088.jpg" },
+        { title: "Great Teacher Onizuka", image: "https://cdn.myanimelist.net/images/anime/13/11460.jpg" },
+        { title: "Mushishi Zoku Shou", image: "https://cdn.myanimelist.net/images/anime/13/58533.jpg" },
+        { title: "Bleach: Sennen Kessen-hen - Soukoku-tan", image: "https://cdn.myanimelist.net/images/anime/1595/144074.jpg" },
+        { title: "Hajime no Ippo: New Challenger", image: "https://cdn.myanimelist.net/images/anime/8/56617.jpg" },
+        { title: "Howl no Ugoku Shiro", image: "https://cdn.myanimelist.net/images/anime/1470/138723.jpg" },
+        { title: "Kimetsu no Yaiba Movie 1: Mugenjou-hen - Akaza Sairai", image: "https://cdn.myanimelist.net/images/anime/1681/148216.jpg" },
+        { title: "Mo Dao Zu Shi: Wanjie Pian", image: "https://cdn.myanimelist.net/images/anime/1634/116782.jpg" },
+        { title: "Mononoke Hime", image: "https://cdn.myanimelist.net/images/anime/1355/147277.jpg" },
+        { title: "Uma Musume: Cinderella Gray Part 2", image: "https://cdn.myanimelist.net/images/anime/1120/152280.jpg" },
+        { title: "Monogatari Series: Off & Monster Season", image: "https://cdn.myanimelist.net/images/anime/1142/146776.jpg" },
+        { title: "Mushishi", image: "https://cdn.myanimelist.net/images/anime/2/73862.jpg" },
+        { title: "Shigatsu wa Kimi no Uso", image: "https://cdn.myanimelist.net/images/anime/1405/143284.jpg" },
+        { title: "Shiguang Dailiren II", image: "https://cdn.myanimelist.net/images/anime/1897/137108.jpg" },
+        { title: "Shingeki no Kyojin Season 3", image: "https://cdn.myanimelist.net/images/anime/1173/92110.jpg" },
+        { title: "Tengen Toppa Gurren Lagann", image: "https://cdn.myanimelist.net/images/anime/4/5123.jpg" },
+        { title: "Tian Guan Cifu Er", image: "https://cdn.myanimelist.net/images/anime/1203/139210.jpg" },
+        { title: "Uma Musume: Pretty Derby - Shin Jidai no Tobira", image: "https://cdn.myanimelist.net/images/anime/1427/142210.jpg" },
+        { title: "Fate/stay night Movie: Heaven's Feel - III. Spring Song", image: "https://cdn.myanimelist.net/images/anime/1142/112957.jpg" },
+        { title: "Made in Abyss", image: "https://cdn.myanimelist.net/images/anime/6/86733.jpg" },
+        { title: "Natsume Yuujinchou Shi", image: "https://cdn.myanimelist.net/images/anime/3/37449.jpg" },
+        { title: "Odd Taxi", image: "https://cdn.myanimelist.net/images/anime/1981/113348.jpg" },
+        { title: "Ping Pong the Animation", image: "https://cdn.myanimelist.net/images/anime/1586/146565.jpg" },
+        { title: "Cyberpunk: Edgerunners", image: "https://cdn.myanimelist.net/images/anime/1818/126435.jpg" },
+        { title: "Death Note", image: "https://cdn.myanimelist.net/images/anime/1079/138100.jpg" },
+        { title: "Haikyuu!! Second Season", image: "https://cdn.myanimelist.net/images/anime/9/76662.jpg" },
+        { title: "Look Back", image: "https://cdn.myanimelist.net/images/anime/1716/142633.jpg" },
+        { title: "Luo Xiaohei Zhanji 2", image: "https://cdn.myanimelist.net/images/anime/1288/151853.jpg" }
+    ];
+
+    let currentStreamData = {};
+    let currentHeroIndex = 0;
+    let heroSlides = [];
+
+    // Initialize hero banner with 120 random episodes
+    function initHeroBanner() {
+        const container = document.getElementById("heroSliderContainer");
+        container.innerHTML = "";
+
+        heroSlides = [];
+        for (let i = 1; i <= 120; i++) {
+            const randomAnime = famousAnime[Math.floor(Math.random() * famousAnime.length)];
+            heroSlides.push({
+                title: randomAnime.title,
+                image: randomAnime.image,
+                episode: Math.floor(Math.random() * 24) + 1
+            });
+        }
+
+        heroSlides.forEach((slide, index) => {
+            const slideEl = document.createElement("div");
+            slideEl.className = `hero-slide ${index === 0 ? 'active' : ''}`;
+            slideEl.style.backgroundImage = `url('${slide.image}')`;
+            slideEl.innerHTML = `
+                <div class="hero-slide-overlay">
+                    <div class="hero-slide-title">${slide.title}</div>
+                    <div class="hero-slide-ep">Episode ${slide.episode}</div>
+                </div>
+            `;
+            container.appendChild(slideEl);
+        });
+
+        setInterval(heroNextSlide, 6000);
+    }
+
+    function heroNextSlide() {
+        currentHeroIndex = (currentHeroIndex + 1) % heroSlides.length;
+        updateHeroSlide();
+    }
+
+    function heroPrevSlide() {
+        currentHeroIndex = (currentHeroIndex - 1 + heroSlides.length) % heroSlides.length;
+        updateHeroSlide();
+    }
+
+    function updateHeroSlide() {
+        const slides = document.querySelectorAll(".hero-slide");
+        slides.forEach((slide, index) => {
+            slide.classList.toggle("active", index === currentHeroIndex);
+        });
+    }
+
+    // Initialize home page
+    async function initHome() {
+        const grid = document.getElementById("famousGrid");
+        grid.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+
+        famousAnime.forEach(anime => {
+            fragment.appendChild(createCard(anime, true));
+        });
+
+        grid.appendChild(fragment);
+        initHeroBanner();
+    }
+
+    function createCard(element, isStatic = false) {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const imgWrapper = document.createElement("div");
+        imgWrapper.className = "card-img-wrapper skeleton-loader";
+
+        const img = document.createElement("img");
+
+        // Improved image loading logic
+        img.onload = () => {
+            imgWrapper.classList.remove("skeleton-loader");
+            img.classList.add("loaded");
+        };
+        img.onerror = () => {
+            // Fallback for broken images
+            imgWrapper.classList.remove("skeleton-loader");
+            imgWrapper.style.background = "#333";
+            imgWrapper.innerHTML = `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:10px;color:#666;text-align:center;">IMAGE<br>UNAVAILABLE</div>`;
+        };
+
+        // Support different image property names from different API versions
+        // The Django view uses "poster" for search results and "image" for the famous list
+        const imageUrl = element.poster || element.image || element.thumbnail || element.img || "";
+
+        // Use a small delay to ensure skeleton is visible for a moment
+        setTimeout(() => {
+            if (imageUrl) {
+                img.src = imageUrl;
+            } else {
+                img.dispatchEvent(new Event('error'));
+            }
+        }, 100);
+
+        imgWrapper.appendChild(img);
+
+        const info = document.createElement("div");
+        info.className = "card-info";
+
+        const title = document.createElement("div");
+        title.className = "card-title";
+        title.textContent = element.title;
+
+        const meta = document.createElement("div");
+        meta.className = "card-meta";
+        meta.textContent = "Series • HD";
+
+        info.appendChild(title);
+        info.appendChild(meta);
+
+        card.appendChild(imgWrapper);
+        card.appendChild(info);
+
+        card.addEventListener("click", () => {
+            if (isStatic) {
+                document.getElementById("searchInput").value = element.title;
+                searchAnime();
+            } else {
+                fetchEpisodes(element);
+            }
+        });
+        return card;
+    }
+
+    async function searchAnime() {
+        const query = document.getElementById("searchInput").value;
+        if (!query) return;
+        const grid = document.getElementById("grid");
+        const loader = document.getElementById("loader");
+
+        grid.innerHTML = "";
+        loader.style.display = "block";
+        document.getElementById("searchResultsSection").style.display = "block";
+        document.getElementById("homeSection").style.display = "none";
+        document.getElementById("streamingSection").style.display = "none";
+        document.getElementById("heroBanner").style.display = "none";
+
+        try {
+            const response = await fetch("https://anime-search-api-4.onrender.com/api/v1/search/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ query: query })
+            });
+            const Data = await response.json();
+            loader.style.display = "none";
+
+            const commonAnime = ["One Piece", "Bleach", "Black Clover", "Jujutsu Kaisen", "Naruto", "Boruto"];
+            const lowerQuery = query.toLowerCase();
+
+            if (Data.results && Data.results.length > 0) {
+                const fragment = document.createDocumentFragment();
+                let resultsFound = false;
+
+                Data.results.forEach(element => {
+                    const lowerTitle = element.title.toLowerCase();
+                    const isCommon = commonAnime.some(common => lowerTitle.includes(common.toLowerCase()));
+
+                    if (!isCommon || lowerTitle.includes(lowerQuery)) {
+                        fragment.appendChild(createCard(element));
+                        resultsFound = true;
+                    }
+                });
+
+                if (resultsFound) {
+                    grid.appendChild(fragment);
+                } else {
+                    grid.innerHTML = `<p style='grid-column: 1/-1; text-align: center; padding: 40px; color: #888;'>No relevant results for "${query}".</p>`;
+                }
+            } else {
+                grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; padding: 40px; color: #888;'>No results found.</p>";
+            }
+        } catch (error) {
+            loader.style.display = "none";
+            grid.innerHTML = "<p style='grid-column: 1/-1; text-align: center; color: #FF4D4D; padding: 40px;'>Error: API connection failed.</p>";
+        }
+    }
+
+    async function fetchEpisodes(anime) {
+        const overlay = document.getElementById("episodeOverlay");
+        const container = document.getElementById("episodesContainer");
+        container.innerHTML = `
+            <div class="episode-loading">
+                <div class="episode-spinner"></div>
+                <div class="episode-loading-text">LOADING EPISODES...</div>
+            </div>
+        `;
+        document.getElementById("overlayTitle").textContent = anime.title;
+        overlay.style.display = "flex";
+
+        try {
+            const response = await fetch(`https://anime-search-api-4.onrender.com/api/v1/list/${anime.anime_id}`);
+            const data = await response.json();
+            container.innerHTML = "";
+
+            // FIX: Use 'episodes' field as per actual API response
+            const episodesList = data.episodes || data.episode_data || [];
+
+            if (episodesList && episodesList.length > 0) {
+                episodesList.forEach(ep => {
+                    const epBox = document.createElement("div");
+                    epBox.className = "episode-item";
+                    epBox.textContent = `EP ${ep.episode_number}`;
+                    epBox.addEventListener("click", () => startStreaming(anime, ep, episodesList));
+                    container.appendChild(epBox);
+                });
+            } else {
+                container.innerHTML = "<p style='text-align: center; padding: 30px; color: #888;'>No episodes found for this anime.</p>";
+            }
+        } catch (error) {
+            container.innerHTML = "<p style='color:#FF4D4D; text-align: center; padding: 30px;'>Error fetching episodes. Please try again.</p>";
+        }
+    }
+
+    async function startStreaming(anime, episode, allEpisodes) {
+        closeOverlay();
+        document.getElementById("searchResultsSection").style.display = "none";
+        document.getElementById("homeSection").style.display = "none";
+        document.getElementById("heroBanner").style.display = "none";
+        document.getElementById("streamingSection").style.display = "block";
+
+        currentStreamData = {
+            id: episode.episode_id,
+            title: anime.title,
+            ep: parseInt(episode.episode_number),
+            episodes: allEpisodes
+        };
+
+        // Fetch the streaming URL from your API
+        try {
+            // Matches your EXACT API URL: /stream/<slug:episode_slug>
+            const slug = `${episode.episode_id}-japanese`;
+            const response = await fetch(`https://anime-search-api-4.onrender.com/api/v1/stream/${slug}`);
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const streamUrl = await response.json();
+            console.log("Streaming API Response:", streamUrl);
+
+            document.getElementById('animePlayer').src = `https://vidwish.live/stream/s-2/${episode.episode_id}/sub`;
+            updatePlayerUI();
+        } catch (error) {
+            console.error("Stream fetch error:", error);
+            alert(`Stream error: ${error.message}`);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updatePlayerUI() {
+        document.getElementById('displayTitle').textContent = currentStreamData.title;
+        document.getElementById('displayEpisode').textContent = `Episode ${currentStreamData.ep}`;
+        document.getElementById('prevBtn').disabled = (currentStreamData.ep <= 1);
+        document.getElementById('nextBtn').disabled = (currentStreamData.ep >= currentStreamData.episodes.length);
+    }
+
+    function changeEpisode(delta) {
+        const nextEpNum = currentStreamData.ep + delta;
+        const nextEp = currentStreamData.episodes.find(e => parseInt(e.episode_number) === nextEpNum);
+        if (nextEp) {
+            startStreaming({title: currentStreamData.title}, nextEp, currentStreamData.episodes);
+        }
+    }
+
+    function goHome() {
+        document.getElementById("streamingSection").style.display = "none";
+        document.getElementById("searchResultsSection").style.display = "none";
+        document.getElementById("homeSection").style.display = "block";
+        if (window.innerWidth >= 1024) {
+            document.getElementById("heroBanner").style.display = "block";
+        }
+        document.getElementById("searchInput").value = "";
+        document.getElementById('animePlayer').src = "";
+    }
+
+    function closeOverlay() { document.getElementById("episodeOverlay").style.display = "none"; }
+    document.getElementById("searchInput").addEventListener("keypress", (e) => { if (e.key === "Enter") searchAnime(); });
+    initHome();
+</script>
+
+</body>
+</html>
