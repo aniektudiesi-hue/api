@@ -973,7 +973,7 @@
             const streamUrl = await response.json();
             console.log("Streaming API Response:", streamUrl);
 
-            document.getElementById('animePlayer').src = `https://vidwish.live/stream/s-2/${episode.episode_id}/sub`;
+            document.getElementById('animePlayer').src = `https://megaplay.buzz/stream/s-2/${episode.episode_id}/sub`;
             updatePlayerUI();
         } catch (error) {
             console.error("Stream fetch error:", error);
