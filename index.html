@@ -1794,9 +1794,10 @@
         }
 
         try {
-            const response = await fetch(`https://9animetv.to/ajax/search/suggest?keyword=${encodeURIComponent(query)}`);
+            // Use our optimized backend for suggestions
+            const response = await fetch(`${API_BASE}/suggest/${encodeURIComponent(query)}`);
             const data = await response.json();
-            const suggestions = data.result || [];
+            const suggestions = data.results || data.result || [];
             
             suggestionCache.set(query, suggestions);
             showSuggestions(suggestions);
@@ -1844,10 +1845,10 @@
         const popularTitles = ['Naruto', 'One Piece', 'Dragon Ball', 'Bleach', 'My Hero Academia'];
         popularTitles.forEach(title => {
             setTimeout(() => {
-                fetch(`https://9animetv.to/ajax/search/suggest?keyword=${encodeURIComponent(title)}`, { method: 'GET' })
+                fetch(`${API_BASE}/suggest/${encodeURIComponent(title)}`)
                     .then(r => r.json())
                     .then(data => {
-                        suggestionCache.set(title, data.result || []);
+                        suggestionCache.set(title, data.results || data.result || []);
                     })
                     .catch(e => console.log('Prefetch:', e));
             }, Math.random() * 2000); // Stagger requests
