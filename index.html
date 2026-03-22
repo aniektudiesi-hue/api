@@ -278,16 +278,33 @@
             background: linear-gradient(135deg, var(--accent-pink), var(--accent-neon));
             border: none;
             color: white;
-            padding: 10px 16px;
+            padding: 10px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 700;
-            font-size: 11px;
+            font-size: 10px;
             transition: all var(--transition-fast);
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
             box-shadow: 0 4px 15px rgba(255, 0, 110, 0.3);
             white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        @media (min-width: 480px) {
+            .search-container button {
+                padding: 10px 14px;
+                font-size: 10.5px;
+                letter-spacing: 0.4px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .search-container button {
+                padding: 10px 16px;
+                font-size: 11px;
+                letter-spacing: 0.5px;
+            }
         }
 
         .search-container button:hover {
@@ -1301,7 +1318,7 @@
 </div>
 
 <script>
-    // ===== FULL ANIME DATA =====
+    // ===== FULL ANIME DATA ===== 
     const fullAnimeList = [
         { title: "Sousou no Frieren", image: "https://cdn.myanimelist.net/images/anime/1015/138006.jpg" },
         { title: "Sousou no Frieren 2nd Season", image: "https://cdn.myanimelist.net/images/anime/1921/154528.jpg" },
@@ -1416,13 +1433,13 @@
     // ===== INITIALIZATION =====
     async function initHome() {
         const fragment = document.createDocumentFragment();
-
+        
         fullAnimeList.forEach((anime, index) => {
             const card = createCard(anime, true);
             card.style.animationDelay = `${index * 0.05}s`;
             fragment.appendChild(card);
         });
-
+        
         document.getElementById("famousGrid").appendChild(fragment);
         initHeroSlider();
         startAsyncImageLoading();
@@ -1431,19 +1448,19 @@
     function initHeroSlider() {
         const container = document.getElementById("heroSliderContainer");
         container.innerHTML = "";
-
+        
         fullAnimeList.slice(0, 5).forEach((anime, index) => {
             const slide = document.createElement("div");
             slide.className = `hero-slide ${index === 0 ? 'active' : ''}`;
             slide.style.backgroundImage = `url('${anime.image}')`;
-
+            
             const overlay = document.createElement("div");
             overlay.className = "hero-slide-overlay";
             overlay.innerHTML = `
                 <h2 class="hero-slide-title">${anime.title}</h2>
                 <span class="hero-slide-ep">FEATURED • HD</span>
             `;
-
+            
             slide.appendChild(overlay);
             container.appendChild(slide);
         });
@@ -1520,7 +1537,7 @@
         };
 
         const imageUrl = element.poster || element.image || element.thumbnail || element.img || "";
-
+        
         if (imageUrl) {
             img.dataset.src = imageUrl;
             imageLoadQueue.push(img);
@@ -1565,7 +1582,7 @@
     async function searchAnime() {
         const query = document.getElementById("searchInput").value;
         if (!query) return;
-
+        
         const grid = document.getElementById("grid");
 
         grid.innerHTML = "";
@@ -1601,14 +1618,14 @@
     async function fetchEpisodes(anime) {
         const overlay = document.getElementById("episodeOverlay");
         const container = document.getElementById("episodesContainer");
-
+        
         container.innerHTML = `
             <div class="episode-loading">
                 <div class="episode-spinner"></div>
                 <div class="episode-loading-text">LOADING EPISODES...</div>
             </div>
         `;
-
+        
         document.getElementById("overlayTitle").textContent = anime.title;
         overlay.classList.add("active");
 
@@ -1621,7 +1638,7 @@
 
             if (episodesList && episodesList.length > 0) {
                 const fragment = document.createDocumentFragment();
-
+                
                 episodesList.forEach((ep, index) => {
                     const epBox = document.createElement("div");
                     epBox.className = "episode-item";
@@ -1630,7 +1647,7 @@
                     epBox.addEventListener("click", () => startStreaming(anime, ep, episodesList));
                     fragment.appendChild(epBox);
                 });
-
+                
                 container.appendChild(fragment);
                 prefetchEpisodeDataAsync(anime, episodesList);
                 startStreaming(anime, episodesList[0], episodesList);
@@ -1647,27 +1664,27 @@
         setTimeout(async () => {
             try {
                 const episodeNumbers = [1, 2, 3, 4, 5, 6, 7, 8];
-
+                
                 for (const epNum of episodeNumbers) {
                     const epCacheKey = `${anime.anime_id}-${epNum}`;
-
+                    
                     if (!episodePrefetchCache[epCacheKey]) {
                         try {
                             const prefetchResponse = await fetch(
                                 `https://anime-search-api-burw.onrender.com/anime/episode/${anime.anime_id}`,
-                                {
+                                { 
                                     method: 'GET',
                                     headers: { 'X-Prefetch': 'true' },
                                     priority: 'low'
                                 }
                             );
-
+                            
                             if (prefetchResponse.ok) {
                                 episodePrefetchCache[epCacheKey] = await prefetchResponse.json();
                             }
                         } catch (e) {}
                     }
-
+                    
                     await new Promise(resolve => setTimeout(resolve, 50));
                 }
             } catch (error) {}
@@ -1709,7 +1726,7 @@
     function renderEpisodesList() {
         const grid = document.getElementById('episodesGrid');
         grid.innerHTML = '';
-
+        
         const displayLimit = viewAllMode ? currentStreamData.episodes.length : 50;
         const episodesToShow = currentStreamData.episodes.slice(0, displayLimit);
 
@@ -1730,7 +1747,7 @@
         viewAllMode = !viewAllMode;
         const btn = document.querySelector('.view-all-btn');
         const container = document.getElementById('videoContainer');
-
+        
         if (viewAllMode) {
             btn.textContent = 'HIDE PLAYER';
             container.classList.add('hidden');
@@ -1738,7 +1755,7 @@
             btn.textContent = 'VIEW ALL';
             container.classList.remove('hidden');
         }
-
+        
         renderEpisodesList();
     }
 
