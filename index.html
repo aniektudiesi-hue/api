@@ -72,6 +72,19 @@
             background: var(--accent-pink-light);
         }
 
+        .suggestion-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            transition: background var(--transition-fast), color var(--transition-fast);
+            font-size: 13px;
+        }
+        .suggestion-item.hovered {
+            background: var(--tertiary-black);
+            color: var(--accent-pink);
+        }
+
         /* ===== SPLASH SCREEN ===== */
         #splashScreen {
             position: fixed;
@@ -1348,7 +1361,6 @@
     let currentStreamData = null;
     let heroSlideIndex = 0;
     let imageLoadQueue = [];
-    let isLoadingImages = false;
     let viewAllMode = false;
 
     // ===== SPLASH SCREEN FADE OUT =====
@@ -1363,9 +1375,8 @@
     async function initHome() {
         const fragment = document.createDocumentFragment();
         
-        fullAnimeList.forEach((anime, index) => {
+        fullAnimeList.forEach((anime) => {
             const card = createCard(anime, true);
-            card.style.animationDelay = `${index * 0.05}s`;
             fragment.appendChild(card);
         });
         
@@ -1374,9 +1385,12 @@
         startAsyncImageLoading();
     }
 
+    let heroSlides = [];
+
     function initHeroSlider() {
         const container = document.getElementById("heroSliderContainer");
         container.innerHTML = "";
+        heroSlides = [];
         
         fullAnimeList.slice(0, 5).forEach((anime, index) => {
             const slide = document.createElement("div");
@@ -1392,6 +1406,7 @@
             
             slide.appendChild(overlay);
             container.appendChild(slide);
+            heroSlides.push(slide);
         });
 
         setInterval(() => {
@@ -1401,8 +1416,7 @@
     }
 
     function updateHeroSlide() {
-        const slides = document.querySelectorAll(".hero-slide");
-        slides.forEach((slide, index) => {
+        heroSlides.forEach((slide, index) => {
             slide.classList.toggle("active", index === heroSlideIndex);
         });
     }
@@ -1417,30 +1431,43 @@
         updateHeroSlide();
     }
 
-    // ===== ASYNC IMAGE LOADING =====
+    // ===== ASYNC IMAGE LOADING (IntersectionObserver) =====
+    let imgObserver = null;
+
     function startAsyncImageLoading() {
-        if (isLoadingImages) return;
-        isLoadingImages = true;
+        if (imgObserver) return; // already running
 
-        const loadNextBatch = () => {
-            const batch = imageLoadQueue.splice(0, 4);
-            if (batch.length === 0) {
-                isLoadingImages = false;
-                return;
-            }
+        if ('IntersectionObserver' in window) {
+            imgObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        if (img.dataset.src) {
+                            img.src = img.dataset.src;
+                            delete img.dataset.src;
+                        }
+                        imgObserver.unobserve(img);
+                    }
+                });
+            }, { rootMargin: '200px' });
 
-            batch.forEach(img => {
-                if (img && !img.src) {
-                    img.src = img.dataset.src;
-                }
+            imageLoadQueue.forEach(img => imgObserver.observe(img));
+            imageLoadQueue = [];
+        } else {
+            // Fallback: load all immediately
+            imageLoadQueue.forEach(img => {
+                if (img.dataset.src) { img.src = img.dataset.src; }
             });
+            imageLoadQueue = [];
+        }
+    }
 
-            requestAnimationFrame(() => {
-                setTimeout(loadNextBatch, 100);
-            });
-        };
-
-        loadNextBatch();
+    function observeNewImage(img) {
+        if (imgObserver) {
+            imgObserver.observe(img);
+        } else {
+            imageLoadQueue.push(img);
+        }
     }
 
     // ===== CARD CREATION =====
@@ -1469,7 +1496,7 @@
         
         if (imageUrl) {
             img.dataset.src = imageUrl;
-            imageLoadQueue.push(img);
+            observeNewImage(img);
         }
 
         imgWrapper.appendChild(img);
@@ -1544,9 +1571,8 @@
         const grid = document.getElementById("grid");
         if (results.length > 0) {
             const fragment = document.createDocumentFragment();
-            results.forEach((element, index) => {
+            results.forEach((element) => {
                 const card = createCard(element);
-                card.style.animationDelay = `${index * 0.05}s`;
                 fragment.appendChild(card);
             });
             grid.appendChild(fragment);
@@ -1596,11 +1622,10 @@
 
         if (episodesList.length > 0) {
             const fragment = document.createDocumentFragment();
-            episodesList.forEach((ep, index) => {
+            episodesList.forEach((ep) => {
                 const epBox = document.createElement("div");
                 epBox.className = "episode-item";
                 epBox.textContent = `EP ${ep.episode_number}`;
-                epBox.style.animationDelay = `${index * 0.03}s`;
                 epBox.addEventListener("click", () => startStreaming(anime, ep, episodesList));
                 fragment.appendChild(epBox);
             });
@@ -1643,23 +1668,41 @@
     }
 
     // ===== RENDER EPISODES LIST =====
-    function renderEpisodesList() {
+    let episodesListRendered = false;
+
+    function renderEpisodesList(forceRebuild = false) {
         const grid = document.getElementById('episodesGrid');
+
+        // Fast path: just update the active class
+        if (episodesListRendered && !forceRebuild && !viewAllMode) {
+            const items = grid.querySelectorAll('.episode-item');
+            items.forEach(item => {
+                const epNum = parseInt(item.dataset.ep);
+                item.classList.toggle('current', epNum === currentStreamData.ep);
+            });
+            return;
+        }
+
         grid.innerHTML = '';
+        episodesListRendered = false;
         
         const displayLimit = viewAllMode ? currentStreamData.episodes.length : 50;
         const episodesToShow = currentStreamData.episodes.slice(0, displayLimit);
+        const fragment = document.createDocumentFragment();
 
-        episodesToShow.forEach((ep, index) => {
+        episodesToShow.forEach((ep) => {
             const epBox = document.createElement("div");
             epBox.className = "episode-item";
+            epBox.dataset.ep = ep.episode_number;
             if (parseInt(ep.episode_number) === currentStreamData.ep) {
                 epBox.classList.add("current");
             }
             epBox.textContent = `EP ${ep.episode_number}`;
             epBox.addEventListener("click", () => startStreaming({title: currentStreamData.title}, ep, currentStreamData.episodes));
-            grid.appendChild(epBox);
+            fragment.appendChild(epBox);
         });
+        grid.appendChild(fragment);
+        episodesListRendered = true;
     }
 
     // ===== TOGGLE VIEW ALL EPISODES =====
@@ -1699,6 +1742,7 @@
         document.getElementById("searchInput").value = "";
         document.getElementById('animePlayer').src = "";
         viewAllMode = false;
+        episodesListRendered = false;
     }
 
     function closeOverlay() {
@@ -1749,23 +1793,10 @@
 
         suggestions.slice(0, 8).forEach((suggestion, index) => {
             const item = document.createElement('div');
-            item.style.cssText = `
-                padding: 12px 16px;
-                cursor: pointer;
-                color: var(--text-secondary);
-                border-bottom: 1px solid var(--border-color);
-                transition: all var(--transition-fast);
-                font-size: 13px;
-            `;
+            item.className = 'suggestion-item';
             item.textContent = suggestion.title || suggestion;
-            item.onmouseover = () => {
-                item.style.background = 'var(--tertiary-black)';
-                item.style.color = 'var(--accent-pink)';
-            };
-            item.onmouseout = () => {
-                item.style.background = 'transparent';
-                item.style.color = 'var(--text-secondary)';
-            };
+            item.onmouseover = () => item.classList.add('hovered');
+            item.onmouseout = () => item.classList.remove('hovered');
             item.onclick = () => {
                 document.getElementById('searchInput').value = suggestion.title || suggestion;
                 suggestionsDropdown.style.display = 'none';
@@ -1857,9 +1888,9 @@
         });
     }
 
-    // Start prefetching after page loads
+    // Start prefetching after page loads and images have had time to settle
     window.addEventListener('load', () => {
-        setTimeout(prefetchPopularAnime, 1000);
+        setTimeout(prefetchPopularAnime, 4000);
     });
 
     // Initialize
