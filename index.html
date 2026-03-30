@@ -432,6 +432,16 @@
             user-select: none;
             max-height: 65vh;
         }
+        .player-wrapper:fullscreen {
+            max-height: 100vh !important;
+            border-radius: 0;
+            border: none;
+        }
+        .player-wrapper:-webkit-full-screen {
+            max-height: 100vh !important;
+            border-radius: 0;
+            border: none;
+        }
         @media (min-width: 1024px) {
             .player-wrapper {
                 max-height: 55vh;
@@ -451,12 +461,24 @@
             background: #000;
         }
         #roVideoEl:fullscreen {
-            width: 100vw;
-            height: 100vh;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
         }
         #roVideoEl:-webkit-full-screen {
-            width: 100vw;
-            height: 100vh;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+        }
+        #roVideoEl:-moz-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+        }
+        #roVideoEl:-ms-fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
         }
 
         #roIframeWrap {
@@ -470,12 +492,24 @@
             border: none;
         }
         #roIframeWrap:fullscreen {
-            width: 100vw;
-            height: 100vh;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
         }
         #roIframeWrap:-webkit-full-screen {
-            width: 100vw;
-            height: 100vh;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+        }
+        #roIframeWrap:-moz-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
+        }
+        #roIframeWrap:-ms-fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-height: 100vh !important;
         }
 
         /* ===== hiAnime / 9anime style top progress bar buffering ===== */
@@ -2116,8 +2150,17 @@
         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
         
         if (!isFullscreen) {
+            // Request landscape orientation on mobile
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(err => {
+                    console.warn('Could not lock orientation:', err);
+                });
+            }
+            
+            // Request fullscreen
             if (pw.requestFullscreen) {
                 pw.requestFullscreen().catch(err => {
+                    console.warn('Fullscreen request failed:', err);
                     if (pw.webkitEnterFullscreen) pw.webkitEnterFullscreen();
                 });
             } else if (pw.webkitEnterFullscreen) {
@@ -2128,6 +2171,12 @@
                 pw.msRequestFullscreen();
             }
         } else {
+            // Unlock orientation when exiting fullscreen
+            if (screen.orientation && screen.orientation.unlock) {
+                screen.orientation.unlock();
+            }
+            
+            // Exit fullscreen
             if (document.exitFullscreen) {
                 document.exitFullscreen();
             } else if (document.webkitExitFullscreen) {
