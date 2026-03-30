@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GO-ANIME - Search & Stream</title>
+    <title>DASH-ANIME - Search & Stream</title>
     <!-- PERFORMANCE OPTIMIZATION: Preconnect to API and Image CDNs -->
     <link rel="preconnect" href="https://anime-search-api-burw.onrender.com">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="preconnect" href="https://myanimelist.net">
     <link rel="preconnect" href="https://cdn.noitatnemucod.net">
     <style>
@@ -14,10 +15,10 @@
             --primary-black: #0a0a0a;
             --secondary-black: #1a1a1a;
             --tertiary-black: #2a2a2a;
-            --accent-pink: #ff006e;
-            --accent-pink-light: #ff1493;
-            --accent-pink-dark: #c2185b;
-            --accent-neon: #ff0080;
+            --accent-pink: #ff2d75;
+            --accent-pink-light: #ff5e95;
+            --accent-pink-dark: #c11252;
+            --accent-neon: #ff00ff;
             --text-primary: #ffffff;
             --text-secondary: #e0e0e0;
             --text-tertiary: #a0a0a0;
@@ -876,7 +877,7 @@
             display: none;
         }
 
-        #animePlayer {
+        #animePlayer, #hlsPlayer {
             position: absolute;
             top: 0;
             left: 0;
@@ -884,6 +885,10 @@
             height: 100%;
             border: none;
             border-radius: 10px;
+            display: none;
+        }
+        #animePlayer.active, #hlsPlayer.active {
+            display: block;
         }
 
         .player-info {
@@ -1183,7 +1188,7 @@
             <div class="logo-gojo">
                 <img src="https://files.manuscdn.com/user_upload_by_module/session_file/310519663321093674/oWQUOlviOKwSQlpf.png" alt="Gojo" loading="lazy">
             </div>
-            <span>RO-ANIME</span>
+            <span>DASH-ANIME</span>
         </div>
     </div>
     <div class="search-container">
@@ -1206,11 +1211,16 @@
     <div id="streamingSection">
         <button class="nav-btn prev-btn" style="width: auto; margin-bottom: 16px; padding: 8px 16px; font-size: 11px;" onclick="goHome()">← BACK</button>
         <div class="video-container" id="videoContainer">
+            <video id="hlsPlayer" controls playsinline></video>
             <iframe id="animePlayer" src="" allowfullscreen scrolling="no"></iframe>
         </div>
         <div class="player-info">
             <h1 id="displayTitle" class="anime-title">Loading...</h1>
             <div id="displayEpisode" class="episode-label">Episode --</div>
+            <div class="sub-dub-toggle">
+                <button id="server1Btn" class="subdub-btn active" onclick="switchServer(1)">SERVER 1</button>
+                <button id="server2Btn" class="subdub-btn" onclick="switchServer(2)">SERVER 2</button>
+            </div>
             <div class="sub-dub-toggle">
                 <button id="subBtn"  class="subdub-btn active" onclick="switchAudioTrack('sub')">SUB</button>
                 <button id="dubBtn"  class="subdub-btn"        onclick="switchAudioTrack('dub')">DUB</button>
@@ -1272,6 +1282,8 @@
     const apiCache = new Map();        // episodes cache
     const suggestionCache = new Map(); // suggestions cache
     let currentAudioTrack = 'sub';     // 'sub' | 'dub'
+    let currentServer = 1;             // 1 | 2
+    let hls = null;
 
     // ===== FULL ANIME DATA =====
     const fullAnimeList = [
@@ -2048,56 +2060,76 @@
         await loadStreamUrl(episode.episode_id, currentAudioTrack);
     }
 
+    // ===== SWITCH SERVER =====
+    function switchServer(server) {
+        if (server === currentServer) return;
+        currentServer = server;
+
+        document.getElementById('server1Btn').classList.toggle('active', server === 1);
+        document.getElementById('server2Btn').classList.toggle('active', server === 2);
+
+        if (currentStreamData) {
+            loadStreamUrl(currentStreamData.id, currentAudioTrack);
+        }
+    }
+
     // ===== LOAD STREAM URL =====
     async function loadStreamUrl(episodeId, track) {
-        const player = document.getElementById('animePlayer');
+        const iframePlayer = document.getElementById('animePlayer');
+        const hlsVideo = document.getElementById('hlsPlayer');
         const badge  = document.getElementById('streamStatusBadge');
 
-        player.src = '';
         badge.textContent = 'Loading...';
         badge.className = 'stream-status loading';
 
-        const cacheKey = `stream_${episodeId}_${track}`;
-        if (apiCache.has(cacheKey)) {
-            player.src = apiCache.get(cacheKey);
+        // Reset players
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+        hlsVideo.src = "";
+        hlsVideo.classList.remove('active');
+        iframePlayer.src = "";
+        iframePlayer.classList.remove('active');
+
+        const cacheKey = `stream_v${currentServer}_${episodeId}_${track}`;
+
+        if (currentServer === 1) {
+            // SERVER 1: HLS.js
+            try {
+                const response = await fetch(`${API_BASE}/stream/v2/${episodeId}`);
+                const data = await response.json();
+                const m3u8Url = data[track]?.m3u8;
+
+                if (m3u8Url) {
+                    hlsVideo.classList.add('active');
+                    if (Hls.isSupported()) {
+                        hls = new Hls();
+                        hls.loadSource(m3u8Url);
+                        hls.attachMedia(hlsVideo);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => hlsVideo.play());
+                    } else if (hlsVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                        hlsVideo.src = m3u8Url;
+                        hlsVideo.addEventListener('loadedmetadata', () => hlsVideo.play());
+                    }
+                    badge.textContent = '● Live';
+                    badge.className = 'stream-status live';
+                } else {
+                    throw new Error('No m3u8 found');
+                }
+            } catch (error) {
+                console.error('Server 1 error:', error);
+                badge.textContent = '● Error';
+                badge.className = 'stream-status error';
+            }
+        } else {
+            // SERVER 2: Megaplay Iframe
+            const url = `https://megaplay.buzz/stream/s-2/${episodeId}/${track}`;
+            iframePlayer.src = url;
+            iframePlayer.classList.add('active');
             badge.textContent = '● Live';
             badge.className = 'stream-status live';
-            return;
         }
-
-        // Use query param (not path param) to avoid '/' in episodeId breaking the route
-        const streamEndpoint = `${API_BASE}/anime/stream/${encodeURIComponent(episodeId)}?type=${track}`;
-        const fallbackUrl = `https://megaplay.buzz/stream/s-2/${episodeId}/${track}`;
-
-        let url = null;
-        let source = 'mirror';
-
-        // Try backend up to 2 times
-        for (let attempt = 1; attempt <= 2; attempt++) {
-            try {
-                const resp = await fetch(streamEndpoint);
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-                const data = await resp.json();
-                if (data.url) {
-                    url = data.url;
-                    source = data.source || 'ro-anime';
-                    break;
-                }
-            } catch (e) {
-                if (attempt < 2) await new Promise(r => setTimeout(r, 800));
-            }
-        }
-
-        // If backend failed, use megaplay fallback
-        if (!url) {
-            url = fallbackUrl;
-            source = 'mirror';
-        }
-
-        apiCache.set(cacheKey, url);
-        player.src = url;
-        badge.textContent = source === 'mirror' ? '● Mirror' : '● Live';
-        badge.className = 'stream-status live';
     }
 
     // ===== SWITCH SUB / DUB =====
