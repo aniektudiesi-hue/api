@@ -412,7 +412,7 @@
         #streamingSection { display: none; animation: fadeIn 0.6s ease-out; }
 
         /* ===== PLAYER OUTER WRAPPER ===== */
-        #videoContainer { margin-bottom: 24px; }
+        #videoContainer { margin-bottom: 20px; }
         #videoContainer.hidden { display: none; }
 
         /* ===== PREMIUM NATIVE PLAYER ===== */
@@ -421,15 +421,26 @@
             width: 100%;
             aspect-ratio: 16 / 9;
             background: #000;
-            border-radius: 14px;
+            border-radius: 12px;
             overflow: hidden;
             border: 2px solid var(--accent-pink);
             box-shadow:
                 0 0 0 1px rgba(255,0,110,0.1),
                 0 0 40px rgba(255,0,110,0.2),
-                0 24px 60px rgba(0,0,0,0.7);
+                0 20px 50px rgba(0,0,0,0.7);
             cursor: default;
             user-select: none;
+            max-height: 65vh;
+        }
+        @media (min-width: 1024px) {
+            .player-wrapper {
+                max-height: 55vh;
+            }
+        }
+        @media (min-width: 1400px) {
+            .player-wrapper {
+                max-height: 60vh;
+            }
         }
 
         #roVideoEl {
@@ -438,6 +449,14 @@
             display: block;
             cursor: pointer;
             background: #000;
+        }
+        #roVideoEl:fullscreen {
+            width: 100vw;
+            height: 100vh;
+        }
+        #roVideoEl:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
         }
 
         #roIframeWrap {
@@ -449,6 +468,14 @@
             width: 100%;
             height: 100%;
             border: none;
+        }
+        #roIframeWrap:fullscreen {
+            width: 100vw;
+            height: 100vh;
+        }
+        #roIframeWrap:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
         }
 
         /* ===== hiAnime / 9anime style top progress bar buffering ===== */
@@ -2086,15 +2113,42 @@
 
     document.getElementById('roFsBtn').addEventListener('click', () => {
         const pw = roPW();
-        if (!document.fullscreenElement) {
-            pw.requestFullscreen().catch(console.error);
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        
+        if (!isFullscreen) {
+            if (pw.requestFullscreen) {
+                pw.requestFullscreen().catch(err => {
+                    if (pw.webkitEnterFullscreen) pw.webkitEnterFullscreen();
+                });
+            } else if (pw.webkitEnterFullscreen) {
+                pw.webkitEnterFullscreen();
+            } else if (pw.mozRequestFullScreen) {
+                pw.mozRequestFullScreen();
+            } else if (pw.msRequestFullscreen) {
+                pw.msRequestFullscreen();
+            }
         } else {
-            document.exitFullscreen();
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
         }
     });
-    document.addEventListener('fullscreenchange', () => {
-        document.getElementById('roFsIcon').innerHTML = `<path d="${document.fullscreenElement ? FS_EXIT : FS_ENTER}"/>`;
-    });
+    
+    function updateFullscreenIcon() {
+        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        document.getElementById('roFsIcon').innerHTML = `<path d="${isFullscreen ? FS_EXIT : FS_ENTER}"/>`;
+    }
+    
+    document.addEventListener('fullscreenchange', updateFullscreenIcon);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+    document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
+    document.addEventListener('msfullscreenchange', updateFullscreenIcon);
 
     // Keyboard shortcuts
     document.addEventListener('keydown', e => {
