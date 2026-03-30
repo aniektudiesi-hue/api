@@ -490,6 +490,12 @@
             top: 0 !important;
             left: 0 !important;
             z-index: 10000 !important;
+            object-fit: contain;
+        }
+        @media (max-height: 500px) {
+            #roVideoEl.fullscreen-active {
+                object-fit: cover;
+            }
         }
         #roVideoEl:fullscreen {
             width: 100vw !important;
@@ -1334,11 +1340,27 @@
     async function fetchDynamicHomeData() {
         try {
             const resp = await fetch(`${API_BASE}/home/thumbnails`);
-            if (!resp.ok) return;
+            if (!resp.ok) {
+                console.warn('Backend response not ok:', resp.status);
+                return;
+            }
             const data = await resp.json();
-            if ((data.hero_thumbnails || []).length >= 3) initHeroSlider(data.hero_thumbnails);
-            if ((data.trending || []).length > 0) renderDynamicThumbnails(data.trending);
-        } catch(e) {}
+            console.log('Backend data received:', data);
+            
+            if (data.hero_thumbnails && data.hero_thumbnails.length > 0) {
+                console.log('Hero thumbnails found:', data.hero_thumbnails.length);
+                initHeroSlider(data.hero_thumbnails);
+            } else {
+                console.log('No hero thumbnails in response, using fallback');
+            }
+            
+            if (data.trending && data.trending.length > 0) {
+                console.log('Trending data found:', data.trending.length);
+                renderDynamicThumbnails(data.trending);
+            }
+        } catch(e) {
+            console.error('Error fetching dynamic home data:', e);
+        }
     }
 
     function renderDynamicThumbnails(animeList) {
@@ -2182,10 +2204,14 @@
         const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || pw.classList.contains('fullscreen-active');
         
         if (!isFullscreen) {
-            // Lock to landscape orientation on mobile
+            console.log('Entering fullscreen mode');
+            
+            // Force landscape orientation on mobile
             if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').catch(err => {
-                    console.warn('Orientation lock failed:', err);
+                screen.orientation.lock('landscape').then(() => {
+                    console.log('Orientation locked to landscape');
+                }).catch(err => {
+                    console.warn('Orientation lock failed, using CSS fallback:', err);
                 });
             }
             
@@ -2193,6 +2219,7 @@
             pw.classList.add('fullscreen-active');
             video.classList.add('fullscreen-active');
             document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
             
             // Try standard fullscreen API
             if (pw.requestFullscreen) {
@@ -2207,15 +2234,22 @@
                 pw.msRequestFullscreen();
             }
         } else {
+            console.log('Exiting fullscreen mode');
+            
             // Unlock orientation
             if (screen.orientation && screen.orientation.unlock) {
-                screen.orientation.unlock();
+                screen.orientation.unlock().then(() => {
+                    console.log('Orientation unlocked');
+                }).catch(err => {
+                    console.warn('Orientation unlock failed:', err);
+                });
             }
             
             // Remove CSS fullscreen class
             pw.classList.remove('fullscreen-active');
             video.classList.remove('fullscreen-active');
             document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
             
             // Exit fullscreen
             if (document.exitFullscreen) {
@@ -2227,6 +2261,17 @@
             } else if (document.msExitFullscreen) {
                 document.msExitFullscreen();
             }
+        }
+    });
+    
+    // Listen for orientation changes
+    window.addEventListener('orientationchange', () => {
+        const pw = roPW();
+        if (pw.classList.contains('fullscreen-active')) {
+            console.log('Orientation changed, adjusting player');
+            // Force layout recalculation
+            pw.style.display = 'none';
+            setTimeout(() => { pw.style.display = ''; }, 10);
         }
     });
     
