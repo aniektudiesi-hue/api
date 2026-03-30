@@ -433,6 +433,15 @@
             max-height: 65vh;
             transition: all 0.3s ease;
         }
+        @media (min-width: 768px) {
+            .player-wrapper {
+                width: 50vw;
+                height: 50vh;
+                max-height: 50vh;
+                aspect-ratio: auto;
+                margin: 0 auto;
+            }
+        }
         .player-wrapper.fullscreen-active {
             position: fixed !important;
             top: 0 !important;
@@ -465,16 +474,6 @@
             border: none;
             margin: 0;
             padding: 0;
-        }
-        @media (min-width: 1024px) {
-            .player-wrapper {
-                max-height: 55vh;
-            }
-        }
-        @media (min-width: 1400px) {
-            .player-wrapper {
-                max-height: 60vh;
-            }
         }
 
         #roVideoEl {
