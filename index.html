@@ -490,40 +490,51 @@
         /* ===== SUBTITLE OVERLAY ===== */
         #roSubtitleOverlay {
             position: absolute;
-            bottom: 70px;
+            bottom: 14px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 35;
             pointer-events: none;
             text-align: center;
-            max-width: 85%;
-            width: max-content;
-            max-width: min(85%, 800px);
+            width: 62%;
+            max-width: 560px;
+            min-width: 180px;
         }
         #roSubtitleOverlay .ro-sub-line {
-            display: inline-block;
-            background: rgba(0, 0, 0, 0.82);
+            display: inline;
+            background: rgba(0, 0, 0, 0.28);
             color: #fff;
-            font-size: 15px;
-            font-weight: 600;
-            line-height: 1.5;
-            padding: 4px 12px;
-            border-radius: 4px;
+            font-size: clamp(12px, 2vw, 19px);
+            font-weight: 700;
+            line-height: 1.7;
+            padding: 3px 10px;
+            border-radius: 3px;
             letter-spacing: 0.2px;
             text-shadow: 0 1px 4px rgba(0,0,0,0.9);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             white-space: pre-wrap;
             word-break: break-word;
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
         }
         @media (max-width: 600px) {
-            #roSubtitleOverlay { bottom: 60px; }
-            #roSubtitleOverlay .ro-sub-line { font-size: 12px; padding: 3px 9px; }
+            #roSubtitleOverlay {
+                bottom: 10px;
+                width: 72%;
+                max-width: 95vw;
+            }
+            #roSubtitleOverlay .ro-sub-line { font-size: clamp(11px, 3.2vw, 15px); padding: 2px 8px; }
         }
         .player-wrapper.ro-fs-active #roSubtitleOverlay,
         .player-wrapper:fullscreen #roSubtitleOverlay {
-            bottom: 90px;
-            font-size: 17px;
+            bottom: 36px;
+            width: 60%;
+            max-width: 700px;
+        }
+        .player-wrapper.ro-fs-active #roSubtitleOverlay .ro-sub-line,
+        .player-wrapper:fullscreen #roSubtitleOverlay .ro-sub-line {
+            font-size: clamp(15px, 2.4vw, 26px);
         }
 
         /* ===== BUFFERING / TOP BAR ===== */
@@ -1774,17 +1785,28 @@
     }
 
     async function loadVTTSubtitles(vttUrl) {
-        try {
-            const res  = await fetch(vttUrl);
-            if (!res.ok) throw new Error('VTT fetch failed');
-            const text = await res.text();
-            roSubtitleCues = parseVTT(text);
-            roSubActive    = roSubtitleCues.length > 0;
-        } catch(e) {
-            console.warn('[RO-ANIME] Subtitle load failed:', e);
-            roSubtitleCues = [];
-            roSubActive    = false;
+        // Try direct fetch first, then corsproxy fallback
+        const urls = [
+            vttUrl,
+            'https://corsproxy.io/?' + encodeURIComponent(vttUrl)
+        ];
+        for (const url of urls) {
+            try {
+                console.log('[RO-ANIME] Fetching VTT:', url);
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const text = await res.text();
+                if (!text.includes('WEBVTT')) throw new Error('Not a valid VTT file');
+                roSubtitleCues = parseVTT(text);
+                roSubActive    = roSubtitleCues.length > 0;
+                console.log('[RO-ANIME] Subtitles OK:', roSubtitleCues.length, 'cues');
+                return;
+            } catch(e) {
+                console.warn('[RO-ANIME] VTT fetch failed (' + url.slice(0,60) + '):', e.message);
+            }
         }
+        roSubtitleCues = [];
+        roSubActive    = false;
     }
 
     function roRenderSubtitle(currentTime) {
@@ -1827,101 +1849,120 @@
         document.getElementById('roSubtitleOverlay').innerHTML = '';
 
         if (currentServer === 1) {
-            // ─── SERVER 1: HLS via API ───
-            try {
-                const res = await fetch(`${API_BASE}/stream/v2/${episodeId}`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
+            // ─── SERVER 1: HLS via API — retry up to 5 times ───
+            let m3u8Url     = null;
+            let subtitleUrl = null;
+            let attempt     = 0;
+            let loadSuccess = false;
 
-                let m3u8Url  = null;
-                let subtitleUrl = null;
+            while (attempt < 5) {
+                try {
+                    attempt++;
+                    badge.textContent = attempt === 1 ? 'Loading...' : `Retrying (${attempt}/5)...`;
+                    const res  = await fetch(`${API_BASE}/stream/v2/${episodeId}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const data = await res.json();
 
-                // Detect track-specific response (sub/dub)
-                if (data[track] && data[track].m3u8) {
-                    m3u8Url = data[track].m3u8;
-                    // Check for vtt subtitle in track object
-                    subtitleUrl = data[track].vtt || data[track].subtitle || data[track].captions || null;
-                } else if (Array.isArray(data.sources)) {
-                    const src = data.sources.find(s => s.quality === 'default' || s.quality === 'auto') || data.sources[0];
-                    m3u8Url = src?.url || src?.file;
-                } else if (data.url) {
-                    m3u8Url = data.url;
+                    // Extract m3u8 + subtitle from track-specific response
+                    if (data[track] && data[track].m3u8) {
+                        m3u8Url = data[track].m3u8;
+                        const tracks = data[track].subtitles;
+                        if (Array.isArray(tracks)) {
+                            const vttTrack = tracks.find(t => t.file && t.kind !== 'thumbnails');
+                            if (vttTrack) subtitleUrl = vttTrack.file;
+                        }
+                    } else if (data.sub && data.sub.m3u8) {
+                        m3u8Url = data.sub.m3u8;
+                        const ft = data.sub.subtitles;
+                        if (Array.isArray(ft)) {
+                            const vttTrack = ft.find(t => t.file && t.kind !== 'thumbnails');
+                            if (vttTrack) subtitleUrl = vttTrack.file;
+                        }
+                    } else if (Array.isArray(data.sources)) {
+                        const src = data.sources.find(s => s.quality === 'default' || s.quality === 'auto') || data.sources[0];
+                        m3u8Url = src?.url || src?.file;
+                    } else if (data.url) {
+                        m3u8Url = data.url;
+                    }
+
+                    if (!m3u8Url) throw new Error('No m3u8 in response');
+
+                    console.log('[RO-ANIME] m3u8:', m3u8Url);
+                    console.log('[RO-ANIME] subtitle url:', subtitleUrl);
+                    loadSuccess = true;
+                    break;
+
+                } catch(err) {
+                    console.warn(`[RO-ANIME] Attempt ${attempt} failed:`, err.message);
+                    if (attempt < 5) {
+                        badge.textContent = `Retrying (${attempt}/5)...`;
+                        await new Promise(r => setTimeout(r, 2500));
+                    }
                 }
+            }
 
-                // Fallback: look for sub/dub top-level track fields
-                if (!m3u8Url && data.sub && data.sub.m3u8) {
-                    m3u8Url    = data.sub.m3u8;
-                    subtitleUrl = data.sub.vtt || null;
-                }
+            if (!loadSuccess) {
+                badge.textContent = '⚠ Server unavailable — try Megaplay';
+                badge.className   = 'stream-status error';
+                roShowSpinner(false);
+                return;
+            }
 
-                // Detect subtitle from top-level fields
-                if (!subtitleUrl) {
-                    subtitleUrl = data.vtt || data.subtitle || data.captions ||
-                                  data.subtitleUrl || data.captionUrl || null;
-                }
+            // Load subtitles in parallel — ready before/during playback
+            if (subtitleUrl) {
+                loadVTTSubtitles(subtitleUrl);
+            } else {
+                console.warn('[RO-ANIME] No subtitle URL in API response');
+            }
 
-                // Also check tracks array (common in some APIs)
-                if (!subtitleUrl && Array.isArray(data.tracks)) {
-                    const vttTrack = data.tracks.find(t =>
-                        (t.kind === 'captions' || t.kind === 'subtitles') &&
-                        (t.file || t.src || t.url)
-                    );
-                    if (vttTrack) subtitleUrl = vttTrack.file || vttTrack.src || vttTrack.url;
-                }
+            video.style.display = 'block';
 
-                if (!m3u8Url) throw new Error('No m3u8 URL in response');
-
-                // Load subtitle if found
-                if (subtitleUrl) {
-                    loadVTTSubtitles(subtitleUrl).catch(() => {});
-                }
-
-                video.style.display = 'block';
-
-                if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                    hlsInstance = new Hls({
-                        enableWorker: true,
-                        lowLatencyMode: false,
-                        backBufferLength: 90,
-                        maxBufferLength: 30,
-                        maxMaxBufferLength: 60
-                    });
-                    hlsInstance.loadSource(m3u8Url);
-                    hlsInstance.attachMedia(video);
-                    hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                        video.play().catch(() => {});
-                        badge.textContent = '● HLS';
-                        badge.className   = 'stream-status live';
-                        roShowSpinner(false);
-                        roShowControls();
-                        document.getElementById('roCtrlLabel').textContent =
-                            `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
-                    });
-                    hlsInstance.on(Hls.Events.ERROR, (_, d) => {
-                        if (d.fatal) {
+            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+                hlsInstance = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: false,
+                    backBufferLength: 90,
+                    maxBufferLength: 30,
+                    maxMaxBufferLength: 60
+                });
+                hlsInstance.loadSource(m3u8Url);
+                hlsInstance.attachMedia(video);
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    video.play().catch(() => {});
+                    badge.textContent = '● HLS';
+                    badge.className   = 'stream-status live';
+                    roShowSpinner(false);
+                    roShowControls();
+                    document.getElementById('roCtrlLabel').textContent =
+                        `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
+                });
+                hlsInstance.on(Hls.Events.ERROR, (_, d) => {
+                    console.warn('[RO-ANIME] HLS error:', d.type, d.details, d.fatal);
+                    if (d.fatal) {
+                        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) {
+                            hlsInstance.startLoad();
+                        } else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) {
+                            hlsInstance.recoverMediaError();
+                        } else {
                             badge.textContent = '⚠ Stream Error';
                             badge.className   = 'stream-status error';
                             roShowSpinner(false);
                         }
-                    });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = m3u8Url;
-                    video.addEventListener('loadedmetadata', () => {
-                        video.play().catch(() => {});
-                        badge.textContent = '● HLS';
-                        badge.className   = 'stream-status live';
-                        roShowSpinner(false);
-                        roShowControls();
-                        document.getElementById('roCtrlLabel').textContent =
-                            `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
-                    }, { once: true });
-                } else {
-                    throw new Error('HLS not supported in this browser');
-                }
-
-            } catch(err) {
-                console.error('[RO-ANIME] Server 1 error:', err);
-                badge.textContent = '⚠ Try Megaplay';
+                    }
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = m3u8Url;
+                video.addEventListener('loadedmetadata', () => {
+                    video.play().catch(() => {});
+                    badge.textContent = '● HLS';
+                    badge.className   = 'stream-status live';
+                    roShowSpinner(false);
+                    roShowControls();
+                    document.getElementById('roCtrlLabel').textContent =
+                        `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
+                }, { once: true });
+            } else {
+                badge.textContent = '⚠ HLS not supported';
                 badge.className   = 'stream-status error';
                 roShowSpinner(false);
             }
