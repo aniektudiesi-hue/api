@@ -1150,6 +1150,14 @@
                         </div>
 
                         <div class="ro-right">
+                            <!-- Subtitle / CC selector -->
+                            <div style="position:relative;" id="roSubMenuWrap">
+                                <button class="ro-btn" id="roSubBtn" title="Subtitles" style="display:none;" onclick="roToggleSubMenu()">
+                                    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12zM6 10h2v2H6zm0 4h8v2H6zm10 0h2v2h-2zm-6-4h8v2h-8z"/></svg>
+                                </button>
+                                <div id="roSubDropdown" style="display:none;position:absolute;bottom:44px;right:0;background:#1a1a1a;border:1px solid #ff006e;border-radius:8px;min-width:170px;z-index:200;overflow:hidden;box-shadow:0 8px 24px rgba(255,0,110,0.25);"></div>
+                            </div>
+
                             <!-- Fullscreen -->
                             <button class="ro-btn" id="roFsBtn" title="Fullscreen (F)">
                                 <svg id="roFsIcon" viewBox="0 0 24 24">
@@ -1232,6 +1240,47 @@
 </div>
 
 <script>
+    // ===== POPUP / REDIRECT BLOCKER =====
+    // Block any window.open calls (ads, popups from iframe context leaking out)
+    const _origOpen = window.open;
+    window.open = function(url, target, features) {
+        // Allow only same-origin or intentional opens — block everything else
+        if (!url || url === 'about:blank') return null;
+        try {
+            const u = new URL(url, location.href);
+            if (u.origin === location.origin) return _origOpen.call(window, url, target, features);
+        } catch(e) {}
+        console.warn('[RO-ANIME] Blocked popup:', url);
+        return null;
+    };
+
+    // Block top-level navigation redirects triggered by iframe scripts
+    window.addEventListener('beforeunload', e => {
+        if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    }, true);
+
+    // Intercept any clicks that bubble up from iframes trying to navigate parent
+    document.addEventListener('click', e => {
+        const a = e.target.closest('a[target="_blank"], a[target="_top"], a[target="_parent"]');
+        if (a && !a.closest('#roSubMenuWrap')) {
+            const href = a.getAttribute('href') || '';
+            if (href && !href.startsWith('#') && !href.startsWith('javascript')) {
+                try {
+                    const u = new URL(href, location.href);
+                    if (u.origin !== location.origin) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        console.warn('[RO-ANIME] Blocked redirect link:', href);
+                        return;
+                    }
+                } catch(e) {}
+            }
+        }
+    }, true);
+
     // ===== GLOBAL CONSTANTS & STATE =====
     const API_BASE = "https://anime-search-api-burw.onrender.com";
     const apiCache        = new Map();
@@ -1252,6 +1301,8 @@
     // Subtitle state
     let roSubtitleCues    = [];         // parsed VTT cues [{start, end, text}]
     let roSubActive       = false;      // subtitle track loaded and active
+    let roAllSubtitleTracks = [];       // all subtitle tracks from API [{file, label, kind}]
+    let roActiveSubLabel  = null;       // label of currently active subtitle track
 
     // Fullscreen state
     let roIsFullscreen    = false;      // tracks our fullscreen state
@@ -1742,7 +1793,10 @@
         // Clear subtitles
         roSubtitleCues = [];
         roSubActive    = false;
+        roAllSubtitleTracks = [];
+        roActiveSubLabel    = null;
         document.getElementById('roSubtitleOverlay').innerHTML = '';
+        roUpdateSubMenu();
     }
 
     // ===== VTT PARSER =====
@@ -1809,6 +1863,74 @@
         roSubActive    = false;
     }
 
+    // ===== SUBTITLE LANGUAGE MENU =====
+    function roUpdateSubMenu() {
+        const btn      = document.getElementById('roSubBtn');
+        const dropdown = document.getElementById('roSubDropdown');
+        if (!btn || !dropdown) return;
+
+        if (!roAllSubtitleTracks || roAllSubtitleTracks.length === 0) {
+            btn.style.display = 'none';
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        btn.style.display = 'flex';
+
+        // Build menu items: Off + one per track
+        const allItems = [{ label: 'Off', file: null }].concat(roAllSubtitleTracks);
+        dropdown.innerHTML = allItems.map(t => {
+            const isActive = (t.file === null && roActiveSubLabel === null) ||
+                             (t.label === roActiveSubLabel);
+            return `<div onclick="roSwitchSubtitle(${JSON.stringify(t.file)}, ${JSON.stringify(t.label)})"
+                style="padding:9px 16px;cursor:pointer;font-size:12px;font-weight:700;letter-spacing:0.3px;
+                       color:${isActive ? '#ff006e' : 'rgba(255,255,255,0.8)'};
+                       background:${isActive ? 'rgba(255,0,110,0.1)' : 'transparent'};
+                       border-left:3px solid ${isActive ? '#ff006e' : 'transparent'};
+                       transition:background 0.15s,color 0.15s;"
+                onmouseover="this.style.background='rgba(255,0,110,0.15)'"
+                onmouseout="this.style.background='${isActive ? 'rgba(255,0,110,0.1)' : 'transparent'}'">
+                ${t.label || 'Off'}
+            </div>`;
+        }).join('');
+    }
+
+    function roToggleSubMenu() {
+        const dropdown = document.getElementById('roSubDropdown');
+        if (!dropdown) return;
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Close subtitle dropdown when clicking outside
+    document.addEventListener('click', e => {
+        const wrap = document.getElementById('roSubMenuWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            const dd = document.getElementById('roSubDropdown');
+            if (dd) dd.style.display = 'none';
+        }
+    });
+
+    async function roSwitchSubtitle(fileUrl, label) {
+        document.getElementById('roSubDropdown').style.display = 'none';
+
+        if (!fileUrl) {
+            // "Off" selected
+            roActiveSubLabel = null;
+            roSubtitleCues   = [];
+            roSubActive      = false;
+            document.getElementById('roSubtitleOverlay').innerHTML = '';
+            roUpdateSubMenu();
+            return;
+        }
+
+        roActiveSubLabel = label;
+        roSubtitleCues   = [];
+        roSubActive      = false;
+        document.getElementById('roSubtitleOverlay').innerHTML = '';
+        roUpdateSubMenu();
+        await loadVTTSubtitles(fileUrl);
+    }
+
     function roRenderSubtitle(currentTime) {
         const overlay = document.getElementById('roSubtitleOverlay');
         if (!roSubActive || !roSubtitleCues.length) { overlay.innerHTML = ''; return; }
@@ -1846,7 +1968,10 @@
         // Clear subtitle state for new load
         roSubtitleCues = [];
         roSubActive    = false;
+        roAllSubtitleTracks = [];
+        roActiveSubLabel    = null;
         document.getElementById('roSubtitleOverlay').innerHTML = '';
+        roUpdateSubMenu();
 
         if (currentServer === 1) {
             // ─── SERVER 1: HLS via API — retry up to 5 times ───
@@ -1868,15 +1993,17 @@
                         m3u8Url = data[track].m3u8;
                         const tracks = data[track].subtitles;
                         if (Array.isArray(tracks)) {
-                            const vttTrack = tracks.find(t => t.file && t.kind !== 'thumbnails');
-                            if (vttTrack) subtitleUrl = vttTrack.file;
+                            roAllSubtitleTracks = tracks.filter(t => t.file && t.kind !== 'thumbnails');
+                            const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
+                            if (defaultTrack) subtitleUrl = defaultTrack.file;
                         }
                     } else if (data.sub && data.sub.m3u8) {
                         m3u8Url = data.sub.m3u8;
                         const ft = data.sub.subtitles;
                         if (Array.isArray(ft)) {
-                            const vttTrack = ft.find(t => t.file && t.kind !== 'thumbnails');
-                            if (vttTrack) subtitleUrl = vttTrack.file;
+                            roAllSubtitleTracks = ft.filter(t => t.file && t.kind !== 'thumbnails');
+                            const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
+                            if (defaultTrack) subtitleUrl = defaultTrack.file;
                         }
                     } else if (Array.isArray(data.sources)) {
                         const src = data.sources.find(s => s.quality === 'default' || s.quality === 'auto') || data.sources[0];
@@ -1902,19 +2029,29 @@
             }
 
             if (!loadSuccess) {
-                badge.textContent = '⚠ Server unavailable — try Megaplay';
-                badge.className   = 'stream-status error';
+                badge.textContent = '↪ Switching to Megaplay...';
+                badge.className   = 'stream-status loading';
                 roShowSpinner(false);
-                return;
+                // Auto-switch to Server 2 (Megaplay) after all retries exhausted
+                currentServer = 2;
+                document.getElementById('srv1Btn').classList.remove('active');
+                document.getElementById('srv2Btn').classList.add('active');
+                // Fall through to Megaplay block below
             }
 
             // Load subtitles in parallel — ready before/during playback
-            if (subtitleUrl) {
+            if (loadSuccess && subtitleUrl) {
+                // Set active label to the default/first track
+                const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
+                roActiveSubLabel = defaultTrack ? defaultTrack.label : null;
+                roUpdateSubMenu();
                 loadVTTSubtitles(subtitleUrl);
-            } else {
+            } else if (loadSuccess) {
                 console.warn('[RO-ANIME] No subtitle URL in API response');
+                roUpdateSubMenu();
             }
 
+            if (loadSuccess) {
             video.style.display = 'block';
 
             if (typeof Hls !== 'undefined' && Hls.isSupported()) {
@@ -1966,13 +2103,24 @@
                 badge.className   = 'stream-status error';
                 roShowSpinner(false);
             }
+            } // end loadSuccess block
 
-        } else {
-            // ─── SERVER 2: Megaplay iframe ───
+        } // end if (currentServer === 1)
+
+        if (currentServer === 2) {
+            // ─── SERVER 2: Megaplay iframe ─── (manual or auto-fallback after 5 retries)
             // Hide all custom controls, let iframe handle its own UI
             pw.classList.add('megaplay-mode');
             const url = `https://megaplay.buzz/stream/s-2/${episodeId}/${track}`;
-            iframeWrap.innerHTML = `<iframe src="${url}" allowfullscreen allow="autoplay; encrypted-media; fullscreen"></iframe>`;
+            iframeWrap.innerHTML = `<iframe
+                src="${url}"
+                allowfullscreen
+                allow="autoplay; encrypted-media; fullscreen"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads"
+                referrerpolicy="no-referrer"
+                loading="lazy"
+                style="pointer-events:auto;"
+            ></iframe>`;
             iframeWrap.style.display = 'block';
             badge.textContent = '● Megaplay';
             badge.className   = 'stream-status live';
@@ -2087,7 +2235,10 @@
         // Clear subtitles
         roSubtitleCues = [];
         roSubActive    = false;
+        roAllSubtitleTracks = [];
+        roActiveSubLabel    = null;
         document.getElementById('roSubtitleOverlay').innerHTML = '';
+        roUpdateSubMenu();
     }
 
     function closeOverlay() { document.getElementById('episodeOverlay').classList.remove('active'); }
