@@ -442,7 +442,9 @@
                 margin: 0 auto;
             }
         }
-        .player-wrapper.fullscreen-active {
+
+        /* CSS fullscreen fallback — used when native API fails or on mobile */
+        .player-wrapper.ro-fs-active {
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
@@ -452,29 +454,17 @@
             aspect-ratio: auto !important;
             border-radius: 0 !important;
             border: none !important;
-            z-index: 9999 !important;
+            z-index: 99999 !important;
             margin: 0 !important;
             padding: 0 !important;
             box-shadow: none !important;
+            background: #000 !important;
         }
-        .player-wrapper:fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
-            border-radius: 0;
-            border: none;
-            margin: 0;
-            padding: 0;
-        }
-        .player-wrapper:-webkit-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
-            border-radius: 0;
-            border: none;
-            margin: 0;
-            padding: 0;
-        }
+
+        /* Native fullscreen rules */
+        .player-wrapper:fullscreen { width: 100vw !important; height: 100vh !important; max-height: 100vh !important; border-radius: 0; border: none; }
+        .player-wrapper:-webkit-full-screen { width: 100vw !important; height: 100vh !important; max-height: 100vh !important; border-radius: 0; border: none; }
+        .player-wrapper:-moz-full-screen { width: 100vw !important; height: 100vh !important; max-height: 100vh !important; border-radius: 0; border: none; }
 
         #roVideoEl {
             width: 100%;
@@ -482,74 +472,61 @@
             display: block;
             cursor: pointer;
             background: #000;
-        }
-        #roVideoEl.fullscreen-active {
-            width: 100vw !important;
-            height: 100vh !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            z-index: 10000 !important;
             object-fit: contain;
-        }
-        @media (max-height: 500px) {
-            #roVideoEl.fullscreen-active {
-                object-fit: cover;
-            }
-        }
-        #roVideoEl:fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
-        }
-        #roVideoEl:-webkit-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
-        }
-        #roVideoEl:-moz-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
-        }
-        #roVideoEl:-ms-fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
         }
 
         #roIframeWrap {
             position: absolute;
             inset: 0;
             display: none;
+            z-index: 5;
         }
         #roIframeWrap iframe {
             width: 100%;
             height: 100%;
             border: none;
         }
-        #roIframeWrap:fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
+
+        /* ===== SUBTITLE OVERLAY ===== */
+        #roSubtitleOverlay {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 35;
+            pointer-events: none;
+            text-align: center;
+            max-width: 85%;
+            width: max-content;
+            max-width: min(85%, 800px);
         }
-        #roIframeWrap:-webkit-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
+        #roSubtitleOverlay .ro-sub-line {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.82);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.5;
+            padding: 4px 12px;
+            border-radius: 4px;
+            letter-spacing: 0.2px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            white-space: pre-wrap;
+            word-break: break-word;
         }
-        #roIframeWrap:-moz-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
+        @media (max-width: 600px) {
+            #roSubtitleOverlay { bottom: 60px; }
+            #roSubtitleOverlay .ro-sub-line { font-size: 12px; padding: 3px 9px; }
         }
-        #roIframeWrap:-ms-fullscreen {
-            width: 100vw !important;
-            height: 100vh !important;
-            max-height: 100vh !important;
+        .player-wrapper.ro-fs-active #roSubtitleOverlay,
+        .player-wrapper:fullscreen #roSubtitleOverlay {
+            bottom: 90px;
+            font-size: 17px;
         }
 
-        /* ===== hiAnime / 9anime style top progress bar buffering ===== */
+        /* ===== BUFFERING / TOP BAR ===== */
         .ro-buffer {
             position: absolute;
             inset: 0;
@@ -559,7 +536,6 @@
         }
         .ro-buffer.active { display: block; }
 
-        /* Thin animated top bar — like hiAnime */
         .ro-topbar {
             position: absolute;
             top: 0; left: 0;
@@ -585,8 +561,6 @@
             0%   { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
-
-        /* Small glow dot at tip of bar */
         .ro-topbar::after {
             content: '';
             position: absolute;
@@ -597,19 +571,15 @@
             background: var(--accent-neon);
             box-shadow: 0 0 10px 4px rgba(255,0,128,0.6);
         }
-
-        /* Subtle dark overlay just to indicate loading, no rotation */
         .ro-buffer-overlay {
             position: absolute;
             inset: 0;
             background: rgba(0,0,0,0.18);
             z-index: 50;
         }
-
-        /* Hidden — kept for compat but not shown */
         .ro-spinner-wrap, .ro-ring-outer, .ro-ring-inner, .ro-ring-inner2, .ro-buffer-label { display: none !important; }
 
-        /* Center play/pause button */
+        /* ===== CENTER PLAY/PAUSE BUTTON ===== */
         .ro-center-play {
             position: absolute;
             top: 50%;
@@ -644,7 +614,7 @@
         .ro-center-play svg { width: 26px; height: 26px; fill: #fff; }
         .ro-center-play.is-play svg { margin-left: 3px; }
 
-        /* Skip flash labels */
+        /* ===== SKIP FLASH LABELS ===== */
         .ro-skip {
             position: absolute;
             top: 50%;
@@ -668,7 +638,11 @@
         .ro-skip.right { right: 7%; }
         .ro-skip.show  { opacity: 1; }
 
-        /* Controls gradient overlay */
+        /* ===== CONTROLS ===== */
+        /*
+         * Outside fullscreen: controls always visible (no hide).
+         * Inside fullscreen: controls hide after 2s idle, show on interaction.
+         */
         .ro-controls {
             position: absolute;
             bottom: 0; left: 0; right: 0;
@@ -678,17 +652,34 @@
                 rgba(0,0,0,0.3) 70%,
                 transparent 100%);
             padding: 52px 18px 16px;
+            z-index: 60;
+            /* Default outside FS: always visible */
+            transform: translateY(0);
+            opacity: 1;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* In fullscreen mode: hidden by default, revealed on ctrl-show */
+        .player-wrapper.ro-fs-active .ro-controls,
+        .player-wrapper:fullscreen .ro-controls,
+        .player-wrapper:-webkit-full-screen .ro-controls {
             transform: translateY(105%);
             opacity: 0;
-            transition: transform 0.3s ease, opacity 0.3s ease;
-            z-index: 60;
         }
-        .player-wrapper.ctrl-show .ro-controls {
+        .player-wrapper.ro-fs-active.ctrl-show .ro-controls,
+        .player-wrapper:fullscreen.ctrl-show .ro-controls,
+        .player-wrapper:-webkit-full-screen.ctrl-show .ro-controls {
             transform: translateY(0);
             opacity: 1;
         }
 
-        /* Small episode/title label inside controls */
+        /* Hide controls when in megaplay iframe mode */
+        .player-wrapper.megaplay-mode .ro-controls { display: none !important; }
+        .player-wrapper.megaplay-mode .ro-center-play { display: none !important; }
+        .player-wrapper.megaplay-mode .ro-skip { display: none !important; }
+        .player-wrapper.megaplay-mode .ro-buffer { display: none !important; }
+        .player-wrapper.megaplay-mode #roSubtitleOverlay { display: none !important; }
+
         .ro-ctrl-label {
             font-size: 11px;
             font-weight: 700;
@@ -700,7 +691,6 @@
             text-overflow: ellipsis;
         }
 
-        /* Progress bar */
         .ro-progress {
             width: 100%;
             height: 3px;
@@ -738,11 +728,9 @@
         }
         .ro-progress:hover .ro-prog-thumb { transform: translate(-50%, -50%) scale(1); }
 
-        /* Controls row */
         .ro-row { display: flex; align-items: center; justify-content: space-between; }
         .ro-left, .ro-right { display: flex; align-items: center; gap: 2px; }
 
-        /* Icon buttons */
         .ro-btn {
             background: transparent; border: none;
             color: rgba(255,255,255,0.78);
@@ -756,7 +744,6 @@
         .ro-btn svg { width: 18px; height: 18px; fill: currentColor; }
         .ro-btn.lg svg { width: 22px; height: 22px; }
 
-        /* Time display */
         .ro-time {
             font-size: 11px; font-weight: 600;
             color: rgba(255,255,255,0.6);
@@ -765,7 +752,6 @@
             letter-spacing: 0.3px;
         }
 
-        /* Volume group — expands on hover */
         .ro-vol-group {
             display: flex; align-items: center; gap: 2px;
             max-width: 36px; overflow: hidden;
@@ -812,7 +798,6 @@
             text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;
         }
 
-        /* Server pill toggle */
         .server-row {
             display: flex; align-items: center; gap: 8px;
             margin-bottom: 16px; flex-wrap: wrap;
@@ -928,7 +913,7 @@
 
         .panel-body { padding: 20px; overflow-y: auto; flex-grow: 1; }
 
-        /* ===== SKELETON CARDS (Netflix search style) ===== */
+        /* ===== SKELETON CARDS ===== */
         .card-skeleton {
             background: var(--tertiary-black);
             border-radius: 8px;
@@ -969,7 +954,6 @@
             100% { background-position: -200% 0; }
         }
 
-        /* Stagger skeleton animations */
         .card-skeleton:nth-child(1) .card-skeleton-img,
         .card-skeleton:nth-child(1) .card-skeleton-line { animation-delay: 0s; }
         .card-skeleton:nth-child(2) .card-skeleton-img,
@@ -983,7 +967,6 @@
         .card-skeleton:nth-child(6) .card-skeleton-img,
         .card-skeleton:nth-child(6) .card-skeleton-line { animation-delay: 0.35s; }
 
-        /* Cards fade in from skeleton — staggered per card */
         .card.search-revealed {
             animation: cardReveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
@@ -992,15 +975,9 @@
             to   { opacity: 1; transform: translateY(0)    scale(1);    }
         }
 
-        /* Search section smooth reveal */
-        #searchResultsSection {
-            animation: none;
-        }
-        #searchResultsSection.visible {
-            animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-        }
+        #searchResultsSection { animation: none; }
+        #searchResultsSection.visible { animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1); }
 
-        /* Top search loading bar (Netflix style) */
         #searchTopBar {
             position: fixed;
             top: 0; left: 0;
@@ -1086,14 +1063,16 @@
                 <!-- Native video element -->
                 <video id="roVideoEl" playsinline></video>
 
-                <!-- Iframe fallback (Server 2) -->
+                <!-- Iframe fallback (Server 2 / Megaplay) -->
                 <div id="roIframeWrap"></div>
 
-                <!-- Buffering indicator — hiAnime style top bar -->
+                <!-- Subtitle overlay (HLS mode only) -->
+                <div id="roSubtitleOverlay"></div>
+
+                <!-- Buffering indicator -->
                 <div class="ro-buffer" id="roBuffer">
                     <div class="ro-buffer-overlay"></div>
                     <div class="ro-topbar" id="roTopbar"></div>
-                    <!-- kept for compat -->
                     <div class="ro-spinner-wrap"><div class="ro-ring-outer"></div><div class="ro-ring-inner"></div><div class="ro-ring-inner2"></div></div>
                     <div class="ro-buffer-label">Loading</div>
                 </div>
@@ -1244,8 +1223,8 @@
 <script>
     // ===== GLOBAL CONSTANTS & STATE =====
     const API_BASE = "https://anime-search-api-burw.onrender.com";
-    const apiCache       = new Map();
-    const suggestionCache= new Map();
+    const apiCache        = new Map();
+    const suggestionCache = new Map();
 
     let currentAudioTrack = 'sub';
     let currentServer     = 1;          // 1 = HLS, 2 = Megaplay iframe
@@ -1258,6 +1237,13 @@
     let heroAutoInterval  = null;
     let imageLoadQueue    = [];
     let viewAllMode       = false;
+
+    // Subtitle state
+    let roSubtitleCues    = [];         // parsed VTT cues [{start, end, text}]
+    let roSubActive       = false;      // subtitle track loaded and active
+
+    // Fullscreen state
+    let roIsFullscreen    = false;      // tracks our fullscreen state
 
     // ===== FULL ANIME DATA =====
     const fullAnimeList = [
@@ -1340,27 +1326,11 @@
     async function fetchDynamicHomeData() {
         try {
             const resp = await fetch(`${API_BASE}/home/thumbnails`);
-            if (!resp.ok) {
-                console.warn('Backend response not ok:', resp.status);
-                return;
-            }
+            if (!resp.ok) { console.warn('Backend response not ok:', resp.status); return; }
             const data = await resp.json();
-            console.log('Backend data received:', data);
-            
-            if (data.hero_thumbnails && data.hero_thumbnails.length > 0) {
-                console.log('Hero thumbnails found:', data.hero_thumbnails.length);
-                initHeroSlider(data.hero_thumbnails);
-            } else {
-                console.log('No hero thumbnails in response, using fallback');
-            }
-            
-            if (data.trending && data.trending.length > 0) {
-                console.log('Trending data found:', data.trending.length);
-                renderDynamicThumbnails(data.trending);
-            }
-        } catch(e) {
-            console.error('Error fetching dynamic home data:', e);
-        }
+            if (data.hero_thumbnails && data.hero_thumbnails.length > 0) initHeroSlider(data.hero_thumbnails);
+            if (data.trending && data.trending.length > 0) renderDynamicThumbnails(data.trending);
+        } catch(e) { console.error('Error fetching dynamic home data:', e); }
     }
 
     function renderDynamicThumbnails(animeList) {
@@ -1410,7 +1380,6 @@
             const slide = document.createElement('div');
             slide.className = `hero-slide ${index === 0 ? 'active' : ''}`;
             slide.style.backgroundImage = `url('${slideData.image}')`;
-
             const overlay = document.createElement('div');
             overlay.className = 'hero-slide-overlay';
             slide.appendChild(overlay);
@@ -1475,9 +1444,9 @@
         imgWrapper.className = 'card-img-wrapper loading';
 
         const img = document.createElement('img');
-        img.loading = 'lazy';
-        img.onload  = () => { imgWrapper.classList.remove('loading'); img.classList.add('loaded'); };
-        img.onerror = () => {
+        img.loading  = 'lazy';
+        img.onload   = () => { imgWrapper.classList.remove('loading'); img.classList.add('loaded'); };
+        img.onerror  = () => {
             imgWrapper.classList.remove('loading');
             imgWrapper.style.background = 'var(--tertiary-black)';
             imgWrapper.innerHTML = `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:var(--text-tertiary);text-align:center;">IMAGE<br>UNAVAILABLE</div>`;
@@ -1491,7 +1460,7 @@
         overlay.className = 'card-overlay';
         if (!isStatic) {
             const watchBtn = document.createElement('button');
-            watchBtn.className = 'card-watch-btn';
+            watchBtn.className   = 'card-watch-btn';
             watchBtn.textContent = '▶ WATCH NOW';
             watchBtn.addEventListener('click', (e) => { e.stopPropagation(); fetchEpisodes(element); });
             overlay.appendChild(watchBtn);
@@ -1501,10 +1470,10 @@
         const info = document.createElement('div');
         info.className = 'card-info';
         const title = document.createElement('div');
-        title.className = 'card-title';
+        title.className  = 'card-title';
         title.textContent = element.title;
         const meta = document.createElement('div');
-        meta.className = 'card-meta';
+        meta.className  = 'card-meta';
         meta.textContent = 'Series • HD';
         info.appendChild(title);
         info.appendChild(meta);
@@ -1542,8 +1511,8 @@
 
     // ===== QUICK OPEN EPISODES =====
     async function quickOpenEpisodes(title) {
-        const overlay = document.getElementById('episodeOverlay');
-        const container = document.getElementById('episodesContainer');
+        const overlay    = document.getElementById('episodeOverlay');
+        const container  = document.getElementById('episodesContainer');
         container.innerHTML = `<div class="episode-loading"><div class="episode-spinner"></div><div class="episode-loading-text">LOADING EPISODES...</div></div>`;
         document.getElementById('overlayTitle').textContent = title;
         overlay.classList.add('active');
@@ -1613,7 +1582,6 @@
         if (!query) return;
         hideSuggestions();
 
-        // Show sections + skeleton immediately (no "SEARCHING..." text)
         document.getElementById('searchResultsSection').style.display = 'block';
         document.getElementById('searchResultsSection').className = 'visible';
         document.getElementById('homeSection').style.display = 'none';
@@ -1624,11 +1592,7 @@
         startSearchBar();
 
         const cacheKey = `search:${query.toLowerCase()}`;
-        if (apiCache.has(cacheKey)) {
-            finishSearchBar();
-            renderSearchResults(apiCache.get(cacheKey));
-            return;
-        }
+        if (apiCache.has(cacheKey)) { finishSearchBar(); renderSearchResults(apiCache.get(cacheKey)); return; }
 
         try {
             const response = await fetch(`${API_BASE}/search/${encodeURIComponent(query)}`);
@@ -1664,7 +1628,7 @@
 
     // ===== FETCH EPISODES =====
     async function fetchEpisodes(anime) {
-        const overlay = document.getElementById('episodeOverlay');
+        const overlay   = document.getElementById('episodeOverlay');
         const container = document.getElementById('episodesContainer');
 
         if (!overlay.classList.contains('active')) {
@@ -1709,7 +1673,7 @@
             const fragment = document.createDocumentFragment();
             episodesList.forEach(ep => {
                 const epBox = document.createElement('div');
-                epBox.className = 'episode-item';
+                epBox.className  = 'episode-item';
                 epBox.textContent = `EP ${ep.episode_number}`;
                 epBox.addEventListener('click', () => startStreaming(anime, ep, episodesList));
                 fragment.appendChild(epBox);
@@ -1736,13 +1700,10 @@
             episodes: allEpisodes
         };
 
-        // Reset player state completely
         roPlayerReset();
-
         updatePlayerUI();
         renderEpisodesList(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-
         loadStream();
     }
 
@@ -1756,21 +1717,95 @@
         video.style.display = 'none';
         iframeWrap.innerHTML  = '';
         iframeWrap.style.display = 'none';
+
+        // Clear megaplay mode
+        document.getElementById('playerWrapper').classList.remove('megaplay-mode');
+
         roShowSpinner(false);
         document.getElementById('roCenterPlay').classList.add('visible');
         roApplyProgress(0);
         document.getElementById('roCurTime').textContent = '0:00';
         document.getElementById('roDur').textContent     = '0:00';
         document.getElementById('roProgBuf').style.width = '0%';
+
+        // Clear subtitles
+        roSubtitleCues = [];
+        roSubActive    = false;
+        document.getElementById('roSubtitleOverlay').innerHTML = '';
     }
 
-    // ===== LOAD STREAM (MAIN LOGIC) =====
+    // ===== VTT PARSER =====
+    function parseVTT(text) {
+        const cues = [];
+        const lines = text.split(/\r?\n/);
+        let i = 0;
+        while (i < lines.length) {
+            // Look for timecode line: 00:00:00.000 --> 00:00:00.000
+            if (lines[i] && lines[i].includes('-->')) {
+                const timeLine = lines[i];
+                const match = timeLine.match(
+                    /(\d{1,2}:\d{2}:\d{2}[.,]\d{3})\s+-->\s+(\d{1,2}:\d{2}:\d{2}[.,]\d{3})/
+                );
+                if (match) {
+                    const start = vttTimeToSec(match[1]);
+                    const end   = vttTimeToSec(match[2]);
+                    i++;
+                    const textLines = [];
+                    while (i < lines.length && lines[i].trim() !== '') {
+                        textLines.push(lines[i]);
+                        i++;
+                    }
+                    const cueText = textLines.join('\n').replace(/<[^>]+>/g, '').trim();
+                    if (cueText) cues.push({ start, end, text: cueText });
+                }
+            }
+            i++;
+        }
+        return cues;
+    }
+
+    function vttTimeToSec(t) {
+        // handles HH:MM:SS.mmm or MM:SS.mmm
+        const parts = t.replace(',', '.').split(':');
+        let sec = 0;
+        if (parts.length === 3) sec = parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+        else if (parts.length === 2) sec = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+        return sec;
+    }
+
+    async function loadVTTSubtitles(vttUrl) {
+        try {
+            const res  = await fetch(vttUrl);
+            if (!res.ok) throw new Error('VTT fetch failed');
+            const text = await res.text();
+            roSubtitleCues = parseVTT(text);
+            roSubActive    = roSubtitleCues.length > 0;
+        } catch(e) {
+            console.warn('[RO-ANIME] Subtitle load failed:', e);
+            roSubtitleCues = [];
+            roSubActive    = false;
+        }
+    }
+
+    function roRenderSubtitle(currentTime) {
+        const overlay = document.getElementById('roSubtitleOverlay');
+        if (!roSubActive || !roSubtitleCues.length) { overlay.innerHTML = ''; return; }
+        const cue = roSubtitleCues.find(c => currentTime >= c.start && currentTime <= c.end);
+        if (cue) {
+            overlay.innerHTML = `<span class="ro-sub-line">${cue.text.replace(/\n/g, '<br>')}</span>`;
+        } else {
+            overlay.innerHTML = '';
+        }
+    }
+
+    // ===== LOAD STREAM =====
     async function loadStream() {
-        const episodeId = currentStreamData.id;
-        const track     = currentAudioTrack;
-        const badge     = document.getElementById('streamStatusBadge');
-        const video     = document.getElementById('roVideoEl');
-        const iframeWrap= document.getElementById('roIframeWrap');
+        const episodeId  = currentStreamData.id;
+        const track      = currentAudioTrack;
+        const badge      = document.getElementById('streamStatusBadge');
+        const video      = document.getElementById('roVideoEl');
+        const iframeWrap = document.getElementById('roIframeWrap');
+        const pw         = document.getElementById('playerWrapper');
 
         badge.textContent = 'Loading...';
         badge.className   = 'stream-status loading';
@@ -1778,12 +1813,18 @@
         // Tear down previous
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         video.pause();
-        video.src           = '';
-        video.style.display = 'none';
-        iframeWrap.innerHTML    = '';
-        iframeWrap.style.display= 'none';
+        video.src            = '';
+        video.style.display  = 'none';
+        iframeWrap.innerHTML = '';
+        iframeWrap.style.display = 'none';
+        pw.classList.remove('megaplay-mode');
         roShowSpinner(true);
         document.getElementById('roCenterPlay').classList.add('visible');
+
+        // Clear subtitle state for new load
+        roSubtitleCues = [];
+        roSubActive    = false;
+        document.getElementById('roSubtitleOverlay').innerHTML = '';
 
         if (currentServer === 1) {
             // ─── SERVER 1: HLS via API ───
@@ -1792,9 +1833,14 @@
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
 
-                let m3u8Url = null;
-                if (data[track]?.m3u8) {
+                let m3u8Url  = null;
+                let subtitleUrl = null;
+
+                // Detect track-specific response (sub/dub)
+                if (data[track] && data[track].m3u8) {
                     m3u8Url = data[track].m3u8;
+                    // Check for vtt subtitle in track object
+                    subtitleUrl = data[track].vtt || data[track].subtitle || data[track].captions || null;
                 } else if (Array.isArray(data.sources)) {
                     const src = data.sources.find(s => s.quality === 'default' || s.quality === 'auto') || data.sources[0];
                     m3u8Url = src?.url || src?.file;
@@ -1802,7 +1848,33 @@
                     m3u8Url = data.url;
                 }
 
+                // Fallback: look for sub/dub top-level track fields
+                if (!m3u8Url && data.sub && data.sub.m3u8) {
+                    m3u8Url    = data.sub.m3u8;
+                    subtitleUrl = data.sub.vtt || null;
+                }
+
+                // Detect subtitle from top-level fields
+                if (!subtitleUrl) {
+                    subtitleUrl = data.vtt || data.subtitle || data.captions ||
+                                  data.subtitleUrl || data.captionUrl || null;
+                }
+
+                // Also check tracks array (common in some APIs)
+                if (!subtitleUrl && Array.isArray(data.tracks)) {
+                    const vttTrack = data.tracks.find(t =>
+                        (t.kind === 'captions' || t.kind === 'subtitles') &&
+                        (t.file || t.src || t.url)
+                    );
+                    if (vttTrack) subtitleUrl = vttTrack.file || vttTrack.src || vttTrack.url;
+                }
+
                 if (!m3u8Url) throw new Error('No m3u8 URL in response');
+
+                // Load subtitle if found
+                if (subtitleUrl) {
+                    loadVTTSubtitles(subtitleUrl).catch(() => {});
+                }
 
                 video.style.display = 'block';
 
@@ -1833,7 +1905,6 @@
                         }
                     });
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Safari native HLS
                     video.src = m3u8Url;
                     video.addEventListener('loadedmetadata', () => {
                         video.play().catch(() => {});
@@ -1857,8 +1928,10 @@
 
         } else {
             // ─── SERVER 2: Megaplay iframe ───
+            // Hide all custom controls, let iframe handle its own UI
+            pw.classList.add('megaplay-mode');
             const url = `https://megaplay.buzz/stream/s-2/${episodeId}/${track}`;
-            iframeWrap.innerHTML = `<iframe src="${url}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
+            iframeWrap.innerHTML = `<iframe src="${url}" allowfullscreen allow="autoplay; encrypted-media; fullscreen"></iframe>`;
             iframeWrap.style.display = 'block';
             badge.textContent = '● Megaplay';
             badge.className   = 'stream-status live';
@@ -1881,6 +1954,7 @@
         currentAudioTrack = track;
         document.getElementById('subBtn').classList.toggle('active', track === 'sub');
         document.getElementById('dubBtn').classList.toggle('active', track === 'dub');
+        // Reload stream to fetch correct sub/dub m3u8 + subtitle track
         if (currentStreamData) loadStream();
     }
 
@@ -1912,14 +1986,14 @@
         grid.innerHTML = '';
         episodesListRendered = false;
 
-        const displayLimit  = viewAllMode ? currentStreamData.episodes.length : 50;
-        const episodesToShow= currentStreamData.episodes.slice(0, displayLimit);
+        const displayLimit   = viewAllMode ? currentStreamData.episodes.length : 50;
+        const episodesToShow = currentStreamData.episodes.slice(0, displayLimit);
         const fragment = document.createDocumentFragment();
 
         episodesToShow.forEach(ep => {
             const epBox = document.createElement('div');
-            epBox.className  = 'episode-item';
-            epBox.dataset.ep = ep.episode_number;
+            epBox.className   = 'episode-item';
+            epBox.dataset.ep  = ep.episode_number;
             if (parseInt(ep.episode_number) === currentStreamData.ep) epBox.classList.add('current');
             epBox.textContent = `EP ${ep.episode_number}`;
             epBox.addEventListener('click', () => startStreaming({ title: currentStreamData.title }, ep, currentStreamData.episodes));
@@ -1945,18 +2019,21 @@
 
     function changeEpisode(delta) {
         const nextEpNum = currentStreamData.ep + delta;
-        const nextEp = currentStreamData.episodes.find(e => parseInt(e.episode_number) === nextEpNum);
+        const nextEp    = currentStreamData.episodes.find(e => parseInt(e.episode_number) === nextEpNum);
         if (nextEp) startStreaming({ title: currentStreamData.title }, nextEp, currentStreamData.episodes);
     }
 
     // ===== NAVIGATION =====
     function goHome() {
-        // Cleanup player
+        // Exit fullscreen first if active
+        if (roIsFullscreen) roExitFullscreen();
+
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         const video = document.getElementById('roVideoEl');
         video.pause(); video.src = ''; video.style.display = 'none';
         document.getElementById('roIframeWrap').innerHTML = '';
         document.getElementById('roIframeWrap').style.display = 'none';
+        document.getElementById('playerWrapper').classList.remove('megaplay-mode');
 
         document.getElementById('streamingSection').style.display    = 'none';
         document.getElementById('searchResultsSection').style.display= 'none';
@@ -1965,12 +2042,17 @@
         document.getElementById('searchInput').value = '';
         viewAllMode = false;
         episodesListRendered = false;
+
+        // Clear subtitles
+        roSubtitleCues = [];
+        roSubActive    = false;
+        document.getElementById('roSubtitleOverlay').innerHTML = '';
     }
 
     function closeOverlay() { document.getElementById('episodeOverlay').classList.remove('active'); }
 
     // ===== SEARCH AS YOU TYPE =====
-    let searchTimeout = null;
+    let searchTimeout     = null;
     let suggestionsDropdown = null;
 
     function createSuggestionsDropdown() {
@@ -2048,27 +2130,42 @@
     //  NATIVE PLAYER — CONTROLS ENGINE
     // =====================================================
 
-    const roVideo       = () => document.getElementById('roVideoEl');
-    const roPW          = () => document.getElementById('playerWrapper');
+    const roVideo = () => document.getElementById('roVideoEl');
+    const roPW    = () => document.getElementById('playerWrapper');
 
     function roShowSpinner(on) {
         const buf = document.getElementById('roBuffer');
         buf.classList.toggle('active', on);
         if (on) {
-            // Restart topbar animation
             const bar = document.getElementById('roTopbar');
             bar.style.animation = 'none';
-            bar.offsetHeight; // reflow
+            bar.offsetHeight;
             bar.style.animation = '';
         }
     }
 
+    // ===== SMART CONTROLS VISIBILITY =====
+    // Outside fullscreen: always visible (CSS default: transform none, opacity 1)
+    // In fullscreen: hidden by default, show on interaction, auto-hide after 2s
+
     function roShowControls() {
-        roPW().classList.add('ctrl-show');
+        const pw = roPW();
+        pw.classList.add('ctrl-show');
         clearTimeout(roCtrlTimeout);
-        roCtrlTimeout = setTimeout(() => {
-            if (!roVideo().paused) roPW().classList.remove('ctrl-show');
-        }, 3000);
+
+        if (roIsFullscreen) {
+            // In fullscreen: auto-hide after 2 seconds of inactivity
+            roCtrlTimeout = setTimeout(() => {
+                if (!roVideo().paused) pw.classList.remove('ctrl-show');
+            }, 2000);
+        }
+        // Outside fullscreen: ctrl-show doesn't affect visibility due to CSS default
+    }
+
+    function roHideControlsIfPlaying() {
+        if (roIsFullscreen && !roVideo().paused) {
+            roPW().classList.remove('ctrl-show');
+        }
     }
 
     function roFormatTime(s) {
@@ -2083,14 +2180,13 @@
         document.getElementById('roProgThumb').style.left  = pct + '%';
     }
 
-    // Play/Pause paths
     const RO_PLAY  = 'M8 5v14l11-7z';
     const RO_PAUSE = 'M6 19h4V5H6v14zm8-14v14h4V5h-4z';
 
     function roSyncIcons() {
         const paused = roVideo().paused;
-        document.getElementById('roPpIcon').innerHTML    = `<path d="${paused ? RO_PLAY : RO_PAUSE}"/>`;
-        document.getElementById('roCenterIcon').innerHTML= `<path d="${paused ? RO_PLAY : RO_PAUSE}"/>`;
+        document.getElementById('roPpIcon').innerHTML     = `<path d="${paused ? RO_PLAY : RO_PAUSE}"/>`;
+        document.getElementById('roCenterIcon').innerHTML = `<path d="${paused ? RO_PLAY : RO_PAUSE}"/>`;
         document.getElementById('roCenterPlay').classList.toggle('visible', paused);
         document.getElementById('roCenterPlay').classList.toggle('is-play', paused);
         if (!paused) roShowControls();
@@ -2107,18 +2203,23 @@
         setTimeout(() => el.classList.remove('show'), 650);
     }
 
-    // Player wrapper mouse / touch
+    // ===== PLAYER WRAPPER INTERACTION HANDLERS =====
     const pw = document.getElementById('playerWrapper');
-    pw.addEventListener('mousemove', roShowControls);
+
+    pw.addEventListener('mousemove',  roShowControls);
+    pw.addEventListener('mouseenter', roShowControls);
     pw.addEventListener('mouseleave', () => {
         clearTimeout(roCtrlTimeout);
-        if (!roVideo().paused) roPW().classList.remove('ctrl-show');
+        roHideControlsIfPlaying();
     });
-    pw.addEventListener('touchstart', roShowControls, { passive: true });
+    pw.addEventListener('touchstart', (e) => {
+        roShowControls();
+    }, { passive: true });
+    pw.addEventListener('touchmove', roShowControls, { passive: true });
 
     // Play/Pause listeners
     document.getElementById('roPlayBtn').addEventListener('click', roTogglePlay);
-    document.getElementById('roCenterPlay').addEventListener('click', roTogglePlay);
+    document.getElementById('roCenterPlay').addEventListener('click', (e) => { e.stopPropagation(); roTogglePlay(); });
     document.getElementById('roVideoEl').addEventListener('click', () => { if (!roIsDragging) roTogglePlay(); });
     document.getElementById('roVideoEl').addEventListener('play',   roSyncIcons);
     document.getElementById('roVideoEl').addEventListener('pause',  roSyncIcons);
@@ -2129,13 +2230,15 @@
     document.getElementById('roVideoEl').addEventListener('canplay', () => roShowSpinner(false));
     document.getElementById('roVideoEl').addEventListener('playing', () => roShowSpinner(false));
 
-    // Time / progress
+    // Time / progress + subtitle render
     document.getElementById('roVideoEl').addEventListener('timeupdate', () => {
         const v = roVideo();
         if (!roIsDragging && v.duration) {
             roApplyProgress((v.currentTime / v.duration) * 100);
             document.getElementById('roCurTime').textContent = roFormatTime(v.currentTime);
         }
+        // Render subtitle overlay
+        if (roSubActive) roRenderSubtitle(v.currentTime);
     });
     document.getElementById('roVideoEl').addEventListener('loadedmetadata', () => {
         document.getElementById('roDur').textContent = roFormatTime(roVideo().duration);
@@ -2161,15 +2264,28 @@
     document.addEventListener('mousemove', e => { if (roIsDragging) roSeekFromEvent(e); });
     document.addEventListener('mouseup',   () => { roIsDragging = false; });
 
+    // Touch seek
+    document.getElementById('roProg').addEventListener('touchstart', e => {
+        roIsDragging = true;
+        const touch = e.touches[0];
+        roSeekFromEvent(touch);
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+        if (roIsDragging) roSeekFromEvent(e.touches[0]);
+    }, { passive: true });
+    document.addEventListener('touchend', () => { roIsDragging = false; });
+
     // Rewind / Forward
     document.getElementById('roRwdBtn').addEventListener('click', () => {
         roVideo().currentTime = Math.max(0, roVideo().currentTime - 10);
         roFlashSkip(document.getElementById('roFlashL'));
+        roShowControls();
     });
     document.getElementById('roFwdBtn').addEventListener('click', () => {
         const v = roVideo();
         v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 10);
         roFlashSkip(document.getElementById('roFlashR'));
+        roShowControls();
     });
 
     // Volume
@@ -2182,133 +2298,170 @@
     }
 
     document.getElementById('roVolSlider').addEventListener('input', e => {
-        const v = roVideo();
+        const v  = roVideo();
         v.volume = e.target.value / 100;
         v.muted  = e.target.value == 0;
         roSyncVolIcon();
     });
     document.getElementById('roVolBtn').addEventListener('click', () => {
-        const v = roVideo();
-        v.muted = !v.muted;
+        const v  = roVideo();
+        v.muted  = !v.muted;
         document.getElementById('roVolSlider').value = v.muted ? 0 : v.volume * 100;
         roSyncVolIcon();
     });
 
-    // Fullscreen
+    // =====================================================
+    //  FULLSCREEN ENGINE
+    // =====================================================
+
     const FS_ENTER = 'M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z';
     const FS_EXIT  = 'M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z';
 
-    document.getElementById('roFsBtn').addEventListener('click', () => {
+    function roUpdateFsIcon() {
+        document.getElementById('roFsIcon').innerHTML = `<path d="${roIsFullscreen ? FS_EXIT : FS_ENTER}"/>`;
+    }
+
+    function roEnterFullscreen() {
         const pw = roPW();
-        const video = document.getElementById('roVideoEl');
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || pw.classList.contains('fullscreen-active');
-        
-        if (!isFullscreen) {
-            console.log('Entering fullscreen mode');
-            
-            // Force landscape orientation on mobile
-            if (screen.orientation && screen.orientation.lock) {
-                screen.orientation.lock('landscape').then(() => {
-                    console.log('Orientation locked to landscape');
-                }).catch(err => {
-                    console.warn('Orientation lock failed, using CSS fallback:', err);
-                });
-            }
-            
-            // Add CSS fullscreen class as fallback
-            pw.classList.add('fullscreen-active');
-            video.classList.add('fullscreen-active');
-            document.body.style.overflow = 'hidden';
-            document.documentElement.style.overflow = 'hidden';
-            
-            // Try standard fullscreen API
-            if (pw.requestFullscreen) {
-                pw.requestFullscreen().catch(err => {
-                    console.warn('Standard fullscreen failed:', err);
-                });
-            } else if (pw.webkitRequestFullscreen) {
-                pw.webkitRequestFullscreen();
-            } else if (pw.mozRequestFullScreen) {
-                pw.mozRequestFullScreen();
-            } else if (pw.msRequestFullscreen) {
-                pw.msRequestFullscreen();
-            }
-        } else {
-            console.log('Exiting fullscreen mode');
-            
-            // Unlock orientation
-            if (screen.orientation && screen.orientation.unlock) {
-                screen.orientation.unlock().then(() => {
-                    console.log('Orientation unlocked');
-                }).catch(err => {
-                    console.warn('Orientation unlock failed:', err);
-                });
-            }
-            
-            // Remove CSS fullscreen class
-            pw.classList.remove('fullscreen-active');
-            video.classList.remove('fullscreen-active');
+
+        // Apply CSS fullscreen class immediately — works even if native API fails
+        pw.classList.add('ro-fs-active');
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+        roIsFullscreen = true;
+        roUpdateFsIcon();
+
+        // Attempt native fullscreen on the wrapper element
+        const fsRequest = pw.requestFullscreen ||
+                          pw.webkitRequestFullscreen ||
+                          pw.mozRequestFullScreen ||
+                          pw.msRequestFullscreen;
+
+        if (fsRequest) {
+            fsRequest.call(pw).then(() => {
+                // Native fullscreen succeeded — now safely attempt orientation lock
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(() => {
+                        // Silently ignore — orientation lock is a privileged API
+                        // CSS fallback already handles layout
+                    });
+                }
+            }).catch(() => {
+                // Native fullscreen failed (e.g. permissions policy in iframe context)
+                // CSS fullscreen via ro-fs-active already applied — user sees fullscreen
+            });
+        }
+
+        // Push history state for mobile back button support
+        if (window.history && window.history.pushState) {
+            window.history.pushState({ roFs: true }, '');
+        }
+
+        // Show controls briefly on entering fullscreen
+        roShowControls();
+    }
+
+    function roExitFullscreen() {
+        const pw = roPW();
+
+        // Remove CSS fullscreen class
+        pw.classList.remove('ro-fs-active');
+        pw.classList.remove('ctrl-show');
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+        roIsFullscreen = false;
+        roUpdateFsIcon();
+
+        // Unlock orientation (if it was locked)
+        if (screen.orientation && screen.orientation.unlock) {
+            try { screen.orientation.unlock(); } catch(e) { /* ignore */ }
+        }
+
+        // Exit native fullscreen if active
+        const fsExit = document.exitFullscreen ||
+                       document.webkitExitFullscreen ||
+                       document.mozCancelFullScreen ||
+                       document.msExitFullscreen;
+
+        const isNativeFs = document.fullscreenElement ||
+                           document.webkitFullscreenElement ||
+                           document.mozFullScreenElement ||
+                           document.msFullscreenElement;
+
+        if (isNativeFs && fsExit) {
+            fsExit.call(document).catch(() => { /* ignore */ });
+        }
+    }
+
+    // Fullscreen button click
+    document.getElementById('roFsBtn').addEventListener('click', () => {
+        if (roIsFullscreen) roExitFullscreen();
+        else roEnterFullscreen();
+    });
+
+    // Sync state when native fullscreen changes (e.g. user presses browser Esc / system gesture)
+    function roOnNativeFsChange() {
+        const isNativeFs = !!(document.fullscreenElement ||
+                               document.webkitFullscreenElement ||
+                               document.mozFullScreenElement ||
+                               document.msFullscreenElement);
+
+        if (!isNativeFs && roIsFullscreen) {
+            // Native fullscreen exited externally — sync our state
+            const pw = roPW();
+            pw.classList.remove('ro-fs-active');
+            pw.classList.remove('ctrl-show');
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
-            
-            // Exit fullscreen
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-            } else if (document.mozCancelFullScreen) {
-                document.mozCancelFullScreen();
-            } else if (document.msExitFullscreen) {
-                document.msExitFullscreen();
+            roIsFullscreen = false;
+            roUpdateFsIcon();
+            if (screen.orientation && screen.orientation.unlock) {
+                try { screen.orientation.unlock(); } catch(e) { /* ignore */ }
             }
+        } else if (isNativeFs && !roIsFullscreen) {
+            // Native fullscreen entered externally — sync
+            roPW().classList.add('ro-fs-active');
+            roIsFullscreen = true;
+            roUpdateFsIcon();
+            roShowControls();
         }
-    });
-    
-    // Listen for orientation changes
-    window.addEventListener('orientationchange', () => {
-        const pw = roPW();
-        if (pw.classList.contains('fullscreen-active')) {
-            console.log('Orientation changed, adjusting player');
-            // Force layout recalculation
-            pw.style.display = 'none';
-            setTimeout(() => { pw.style.display = ''; }, 10);
-        }
-    });
-    
-    function updateFullscreenIcon() {
-        const pw = roPW();
-        const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || pw.classList.contains('fullscreen-active');
-        document.getElementById('roFsIcon').innerHTML = `<path d="${isFullscreen ? FS_EXIT : FS_ENTER}"/>`;
     }
-    
-    document.addEventListener('fullscreenchange', updateFullscreenIcon);
-    document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
-    document.addEventListener('mozfullscreenchange', updateFullscreenIcon);
-    document.addEventListener('msfullscreenchange', updateFullscreenIcon);
-    
-    // Handle ESC key to exit fullscreen
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const pw = roPW();
-            if (pw.classList.contains('fullscreen-active')) {
-                document.getElementById('roFsBtn').click();
-            }
+
+    document.addEventListener('fullscreenchange',       roOnNativeFsChange);
+    document.addEventListener('webkitfullscreenchange', roOnNativeFsChange);
+    document.addEventListener('mozfullscreenchange',    roOnNativeFsChange);
+    document.addEventListener('msfullscreenchange',     roOnNativeFsChange);
+
+    // Mobile back button: popstate fires when history state pushed during FS
+    window.addEventListener('popstate', (e) => {
+        if (roIsFullscreen) {
+            roExitFullscreen();
+            // Prevent back navigation — do not consume the event further
         }
     });
 
-    // Keyboard shortcuts
+    // Escape key — exit fullscreen and minimize player
     document.addEventListener('keydown', e => {
-        if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+        if (e.key === 'Escape' && roIsFullscreen) {
+            roExitFullscreen();
+            return;
+        }
+
+        // Other keyboard shortcuts (only when video visible)
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
         const v = roVideo();
         if (v.style.display === 'none') return;
+
         if (e.key === ' ' || e.key === 'k') {
             e.preventDefault(); roTogglePlay();
         } else if (e.key === 'ArrowRight') {
             v.currentTime += 5; roFlashSkip(document.getElementById('roFlashR'));
+            roShowControls();
         } else if (e.key === 'ArrowLeft') {
             v.currentTime -= 5; roFlashSkip(document.getElementById('roFlashL'));
+            roShowControls();
         } else if (e.key === 'f') {
-            document.getElementById('roFsBtn').click();
+            if (roIsFullscreen) roExitFullscreen(); else roEnterFullscreen();
         } else if (e.key === 'm') {
             document.getElementById('roVolBtn').click();
         } else if (e.key === 'ArrowUp') {
