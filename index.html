@@ -1752,7 +1752,7 @@
         closeOverlay();
         document.getElementById('searchResultsSection').style.display = 'none';
         document.getElementById('homeSection').style.display = 'none';
-        document.getElementById('heroBanner').style.display = 'none';
+        if (document.getElementById('heroBanner')) document.getElementById('heroBanner').style.display = 'none';
         document.getElementById('streamingSection').style.display = 'block';
 
         currentStreamData = {
@@ -1762,11 +1762,11 @@
             episodes: allEpisodes
         };
 
-        roPlayerReset();
         updatePlayerUI();
-        renderEpisodesList(true);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        renderEpisodesList();
         loadStream();
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // ===== PLAYER RESET =====
@@ -1942,210 +1942,169 @@
         }
     }
 
+    // ===== PLAYER INTEGRATION (v10.0) =====
+    let playerIntegrationModule = null;
+
+    // Quality Menu Functions
+    function roToggleQualityMenu() {
+        const dropdown = document.getElementById('roQualityDropdown');
+        if (!dropdown) return;
+        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Close quality dropdown when clicking outside
+    document.addEventListener('click', e => {
+        const wrap = document.getElementById('roQualityMenuWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            const dd = document.getElementById('roQualityDropdown');
+            if (dd) dd.style.display = 'none';
+        }
+    });
+
+    const playerInstance = {
+        getVideoElement: () => document.getElementById('roVideoEl'),
+        showLoading: (show) => {
+            roShowSpinner(show);
+            const badge = document.getElementById('streamStatusBadge');
+            if (!badge) return;
+            if (show) {
+                badge.textContent = 'Loading...';
+                badge.className = 'stream-status loading';
+            } else {
+                badge.textContent = '● Live';
+                badge.className = 'stream-status live';
+            }
+        },
+        showError: (msg) => {
+            const badge = document.getElementById('streamStatusBadge');
+            if (badge) {
+                badge.textContent = '⚠ Error';
+                badge.className = 'stream-status error';
+            }
+            // Show error in player area
+            const pw = document.getElementById('playerWrapper');
+            const errorDiv = document.createElement('div');
+            errorDiv.style = "position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;color:white;padding:20px;text-align:center;";
+            errorDiv.innerHTML = `<h2 style="color:#ff006e;margin-bottom:10px;">Playback Error</h2><p style="margin-bottom:20px;">${msg}</p><button onclick="location.reload()" style="background:#ff006e;border:none;color:white;padding:10px 20px;border-radius:4px;cursor:pointer;font-weight:bold;">RETRY</button>`;
+            pw.appendChild(errorDiv);
+        },
+        updateServerList: (servers, activeIndex, onSelect) => {
+            const container = document.querySelector('.server-row');
+            if (!container) return;
+            // Clear existing buttons except the label
+            const label = container.querySelector('.server-row-label');
+            container.innerHTML = '';
+            if (label) container.appendChild(label);
+            
+            servers.forEach((server, index) => {
+                const btn = document.createElement('button');
+                btn.className = `srv-pill ${index === activeIndex ? 'active' : ''}`;
+                btn.textContent = `▶ ${server.serverName}`;
+                btn.onclick = () => {
+                    // Update active state visually
+                    container.querySelectorAll('.srv-pill').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    onSelect(index);
+                };
+                container.appendChild(btn);
+            });
+            // Re-add status badge
+            const badge = document.createElement('span');
+            badge.id = 'streamStatusBadge';
+            badge.className = 'stream-status';
+            container.appendChild(badge);
+        },
+        updateQualityList: (qualities, activeIndex, onSelect) => {
+            const btn = document.getElementById('roQualityBtn');
+            const dropdown = document.getElementById('roQualityDropdown');
+            if (!btn || !dropdown) return;
+
+            if (qualities.length === 0) {
+                btn.style.display = 'none';
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            btn.style.display = 'flex';
+            dropdown.innerHTML = qualities.map((q, index) => {
+                const isActive = index === activeIndex;
+                return `<div class="ro-quality-item ${isActive ? 'active' : ''}" onclick="this.parentElement.style.display='none'; window._onQualitySelect(${index})">
+                    ${q.label}
+                </div>`;
+            }).join('');
+            window._onQualitySelect = onSelect;
+        },
+        setAudioType: (type, onSelect) => {
+            const subBtn = document.getElementById('subBtn');
+            const dubBtn = document.getElementById('dubBtn');
+            if (subBtn) {
+                subBtn.classList.toggle('active', type === 'sub');
+                subBtn.onclick = () => onSelect('sub');
+            }
+            if (dubBtn) {
+                dubBtn.classList.toggle('active', type === 'dub');
+                dubBtn.onclick = () => onSelect('dub');
+            }
+        },
+        setSubtitles: (tracks) => {
+            roAllSubtitleTracks = tracks.map(t => ({ label: t.label, file: t.src, default: t.isDefault }));
+            const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
+            if (defaultTrack) {
+                roSwitchSubtitle(defaultTrack.file, defaultTrack.label);
+            } else {
+                roUpdateSubMenu();
+            }
+        },
+        showSkipButton: (type, visible, onSkip) => {
+            const pw = document.getElementById('playerWrapper');
+            let btn = document.getElementById(`roSkipBtn-${type}`);
+            if (visible) {
+                if (!btn) {
+                    btn = document.createElement('button');
+                    btn.id = `roSkipBtn-${type}`;
+                    btn.className = 'ro-skip-btn';
+                    btn.textContent = `Skip ${type}`;
+                    btn.onclick = onSkip;
+                    pw.appendChild(btn);
+                }
+                btn.style.display = 'block';
+            } else if (btn) {
+                btn.style.display = 'none';
+            }
+        },
+        isSkipButtonVisible: (type) => {
+            const btn = document.getElementById(`roSkipBtn-${type}`);
+            return btn && btn.style.display === 'block';
+        }
+    };
+
     // ===== LOAD STREAM =====
     async function loadStream() {
-        const episodeId  = currentStreamData.id;
-        const track      = currentAudioTrack;
-        const badge      = document.getElementById('streamStatusBadge');
-        const video      = document.getElementById('roVideoEl');
-        const iframeWrap = document.getElementById('roIframeWrap');
-        const pw         = document.getElementById('playerWrapper');
-
-        badge.textContent = 'Loading...';
-        badge.className   = 'stream-status loading';
-
-        // Tear down previous
-        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-        video.pause();
-        video.src            = '';
-        video.style.display  = 'none';
-        iframeWrap.innerHTML = '';
-        iframeWrap.style.display = 'none';
-        pw.classList.remove('megaplay-mode');
-        roShowSpinner(true);
-        document.getElementById('roCenterPlay').classList.add('visible');
-
-        // Clear subtitle state for new load
-        roSubtitleCues = [];
-        roSubActive    = false;
-        roAllSubtitleTracks = [];
-        roActiveSubLabel    = null;
-        document.getElementById('roSubtitleOverlay').innerHTML = '';
-        roUpdateSubMenu();
-
-        if (currentServer === 1) {
-            // ─── SERVER 1: HLS via API — retry up to 5 times ───
-            let m3u8Url     = null;
-            let subtitleUrl = null;
-            let attempt     = 0;
-            let loadSuccess = false;
-
-            while (attempt < 5) {
-                try {
-                    attempt++;
-                    badge.textContent = attempt === 1 ? 'Loading...' : `Retrying (${attempt}/5)...`;
-                    const res  = await fetch(`${API_BASE}/stream/v2/${episodeId}`);
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                    const data = await res.json();
-
-                    // Extract m3u8 + subtitle from track-specific response
-                    if (data[track] && data[track].m3u8) {
-                        m3u8Url = data[track].m3u8;
-                        const tracks = data[track].subtitles;
-                        if (Array.isArray(tracks)) {
-                            roAllSubtitleTracks = tracks.filter(t => t.file && t.kind !== 'thumbnails');
-                            const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
-                            if (defaultTrack) subtitleUrl = defaultTrack.file;
-                        }
-                    } else if (data.sub && data.sub.m3u8) {
-                        m3u8Url = data.sub.m3u8;
-                        const ft = data.sub.subtitles;
-                        if (Array.isArray(ft)) {
-                            roAllSubtitleTracks = ft.filter(t => t.file && t.kind !== 'thumbnails');
-                            const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
-                            if (defaultTrack) subtitleUrl = defaultTrack.file;
-                        }
-                    } else if (Array.isArray(data.sources)) {
-                        const src = data.sources.find(s => s.quality === 'default' || s.quality === 'auto') || data.sources[0];
-                        m3u8Url = src?.url || src?.file;
-                    } else if (data.url) {
-                        m3u8Url = data.url;
-                    }
-
-                    if (!m3u8Url) throw new Error('No m3u8 in response');
-
-                    console.log('[RO-ANIME] m3u8:', m3u8Url);
-                    console.log('[RO-ANIME] subtitle url:', subtitleUrl);
-                    loadSuccess = true;
-                    break;
-
-                } catch(err) {
-                    console.warn(`[RO-ANIME] Attempt ${attempt} failed:`, err.message);
-                    if (attempt < 5) {
-                        badge.textContent = `Retrying (${attempt}/5)...`;
-                        await new Promise(r => setTimeout(r, 2500));
-                    }
-                }
+        if (!playerIntegrationModule) {
+            try {
+                // We use dynamic import to load the module
+                const mod = await import('./player-integration.js');
+                playerIntegrationModule = mod;
+            } catch (e) {
+                console.error("Failed to load player-integration.js", e);
+                // Fallback to direct loading if needed or show error
+                playerInstance.showError("Failed to load player integration module.");
+                return;
             }
-
-            if (!loadSuccess) {
-                badge.textContent = '↪ Switching to Megaplay...';
-                badge.className   = 'stream-status loading';
-                roShowSpinner(false);
-                // Auto-switch to Server 2 (Megaplay) after all retries exhausted
-                currentServer = 2;
-                document.getElementById('srv1Btn').classList.remove('active');
-                document.getElementById('srv2Btn').classList.add('active');
-                // Fall through to Megaplay block below
-            }
-
-            // Load subtitles in parallel — ready before/during playback
-            if (loadSuccess && subtitleUrl) {
-                // Set active label to the default/first track
-                const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
-                roActiveSubLabel = defaultTrack ? defaultTrack.label : null;
-                roUpdateSubMenu();
-                loadVTTSubtitles(subtitleUrl);
-            } else if (loadSuccess) {
-                console.warn('[RO-ANIME] No subtitle URL in API response');
-                roUpdateSubMenu();
-            }
-
-            if (loadSuccess) {
-            video.style.display = 'block';
-
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                hlsInstance = new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: false,
-                    backBufferLength: 90,
-                    maxBufferLength: 30,
-                    maxMaxBufferLength: 60
-                });
-                hlsInstance.loadSource(m3u8Url);
-                hlsInstance.attachMedia(video);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                    video.play().catch(() => {});
-                    badge.textContent = '● HLS';
-                    badge.className   = 'stream-status live';
-                    roShowSpinner(false);
-                    roShowControls();
-                    document.getElementById('roCtrlLabel').textContent =
-                        `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
-                });
-                hlsInstance.on(Hls.Events.ERROR, (_, d) => {
-                    console.warn('[RO-ANIME] HLS error:', d.type, d.details, d.fatal);
-                    if (d.fatal) {
-                        if (d.type === Hls.ErrorTypes.NETWORK_ERROR) {
-                            hlsInstance.startLoad();
-                        } else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) {
-                            hlsInstance.recoverMediaError();
-                        } else {
-                            badge.textContent = '⚠ Stream Error';
-                            badge.className   = 'stream-status error';
-                            roShowSpinner(false);
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = m3u8Url;
-                video.addEventListener('loadedmetadata', () => {
-                    video.play().catch(() => {});
-                    badge.textContent = '● HLS';
-                    badge.className   = 'stream-status live';
-                    roShowSpinner(false);
-                    roShowControls();
-                    document.getElementById('roCtrlLabel').textContent =
-                        `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
-                }, { once: true });
-            } else {
-                badge.textContent = '⚠ HLS not supported';
-                badge.className   = 'stream-status error';
-                roShowSpinner(false);
-            }
-            } // end loadSuccess block
-
-        } // end if (currentServer === 1)
-
-        if (currentServer === 2) {
-            // ─── SERVER 2: Megaplay iframe ─── (manual or auto-fallback after 5 retries)
-            // Hide all custom controls, let iframe handle its own UI
-            pw.classList.add('megaplay-mode');
-            const url = `https://megaplay.buzz/stream/s-2/${episodeId}/${track}`;
-            iframeWrap.innerHTML = `<iframe
-                src="${url}"
-                allowfullscreen
-                allow="autoplay; encrypted-media; fullscreen"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads"
-                referrerpolicy="no-referrer"
-                loading="lazy"
-                style="pointer-events:auto;"
-            ></iframe>`;
-            iframeWrap.style.display = 'block';
-            badge.textContent = '● Megaplay';
-            badge.className   = 'stream-status live';
-            roShowSpinner(false);
         }
+        
+        const video = document.getElementById('roVideoEl');
+        video.style.display = 'block';
+        roShowControls();
+        document.getElementById('roCtrlLabel').textContent = 
+            `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
+            
+        playerIntegrationModule.init(currentStreamData.id, playerInstance);
     }
 
-    // ===== SWITCH SERVER =====
-    function switchServer(server) {
-        if (server === currentServer) return;
-        currentServer = server;
-        document.getElementById('srv1Btn').classList.toggle('active', server === 1);
-        document.getElementById('srv2Btn').classList.toggle('active', server === 2);
-        if (currentStreamData) loadStream();
-    }
-
-    // ===== SWITCH SUB / DUB =====
-    function switchAudioTrack(track) {
-        if (track === currentAudioTrack) return;
-        currentAudioTrack = track;
-        document.getElementById('subBtn').classList.toggle('active', track === 'sub');
-        document.getElementById('dubBtn').classList.toggle('active', track === 'dub');
-        // Reload stream to fetch correct sub/dub m3u8 + subtitle track
-        if (currentStreamData) loadStream();
-    }
+    // These are now handled by player-integration.js via playerInstance callbacks
+    function switchServer(server) { /* Legacy - now handled by playerInstance.updateServerList */ }
+    function switchAudioTrack(track) { /* Legacy - now handled by playerInstance.setAudioType */ }
 
     // ===== UPDATE PLAYER INFO UI =====
     function updatePlayerUI() {
