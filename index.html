@@ -1178,16 +1178,12 @@
 
             <!-- Server selector -->
             <div class="server-row">
-                <span class="server-row-label">Server</span>
-                <button id="srv1Btn" class="srv-pill active" onclick="switchServer(1)">▶ HLS</button>
-                <button id="srv2Btn" class="srv-pill"        onclick="switchServer(2)">▶ Megaplay</button>
                 <span id="streamStatusBadge" class="stream-status"></span>
             </div>
 
-            <!-- Sub / Dub -->
+            <!-- Sub only — DUB removed -->
             <div class="sub-dub-toggle">
-                <button id="subBtn" class="subdub-btn active" onclick="switchAudioTrack('sub')">SUB</button>
-                <button id="dubBtn" class="subdub-btn"        onclick="switchAudioTrack('dub')">DUB</button>
+                <button id="subBtn" class="subdub-btn active">SUB</button>
             </div>
 
             <div class="navigation-controls">
@@ -1282,12 +1278,12 @@
     }, true);
 
     // ===== GLOBAL CONSTANTS & STATE =====
-    const API_BASE = ""; // Relative to the current host
+    const API_BASE = "https://anime-search-api-burw.onrender.com";
     const apiCache        = new Map();
     const suggestionCache = new Map();
 
     let currentAudioTrack = 'sub';
-    let currentServer     = 1;          // 1 = HLS, 2 = Megaplay iframe
+    // currentServer removed — server index is now tracked by v10SrvIdx (0-based)
     let hlsInstance       = null;       // active hls.js instance
     let roCtrlTimeout     = null;
     let roIsDragging      = false;
@@ -1306,6 +1302,13 @@
 
     // Fullscreen state
     let roIsFullscreen    = false;      // tracks our fullscreen state
+
+    // ===== V10 STREAM STATE =====
+    let v10Cache          = null;       // full API v10 response, cached per episode+type
+    let v10SrvIdx         = 0;          // active server index within v10Cache.servers
+    let v10QualIdx        = 0;          // active quality index within current server
+    let v10StallTimer     = null;       // watchdog interval — auto-fallback on freeze
+    let v10LastTime       = -1;         // last video.currentTime seen by watchdog
 
     // ===== FULL ANIME DATA =====
     const fullAnimeList = [
@@ -1390,8 +1393,18 @@
             const resp = await fetch(`${API_BASE}/home/thumbnails`);
             if (!resp.ok) { console.warn('Backend response not ok:', resp.status); return; }
             const data = await resp.json();
-            if (data.hero_thumbnails && data.hero_thumbnails.length > 0) initHeroSlider(data.hero_thumbnails);
-            if (data.trending && data.trending.length > 0) renderDynamicThumbnails(data.trending);
+
+            // Backend returns a flat array of {anime_id, title, poster} objects.
+            // Use poster URLs for the hero slider and the full objects for the grid.
+            const list = Array.isArray(data) ? data : (data.results || []);
+            if (!list.length) return;
+
+            // Hero slider expects an array of poster URL strings
+            const posterUrls = list.slice(0, 8).map(item => item.poster).filter(Boolean);
+            if (posterUrls.length > 0) initHeroSlider(posterUrls);
+
+            // Dynamic grid expects objects with at least {title, poster} — list qualifies
+            renderDynamicThumbnails(list);
         } catch(e) { console.error('Error fetching dynamic home data:', e); }
     }
 
@@ -1752,7 +1765,7 @@
         closeOverlay();
         document.getElementById('searchResultsSection').style.display = 'none';
         document.getElementById('homeSection').style.display = 'none';
-        if (document.getElementById('heroBanner')) document.getElementById('heroBanner').style.display = 'none';
+        document.getElementById('heroBanner').style.display = 'none';
         document.getElementById('streamingSection').style.display = 'block';
 
         currentStreamData = {
@@ -1762,26 +1775,39 @@
             episodes: allEpisodes
         };
 
+        roPlayerReset();
         updatePlayerUI();
-        renderEpisodesList();
-        loadStream();
-
+        renderEpisodesList(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        loadStream();
     }
 
     // ===== PLAYER RESET =====
     function roPlayerReset() {
+        // Clear v10 stream state so next loadStream() starts completely fresh
+        clearInterval(v10StallTimer);
+        v10StallTimer = null;
+        v10Cache      = null;
+        v10SrvIdx     = 0;
+        v10QualIdx    = 0;
+        v10LastTime   = -1;
+
         if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
         const video      = document.getElementById('roVideoEl');
         const iframeWrap = document.getElementById('roIframeWrap');
+        video.removeEventListener('timeupdate', v10OnTimeUpdate);
         video.pause();
         video.src        = '';
         video.style.display = 'none';
         iframeWrap.innerHTML  = '';
         iframeWrap.style.display = 'none';
 
-        // Clear megaplay mode
+        // Clear megaplay mode and restore HCR overlay controls visibility
         document.getElementById('playerWrapper').classList.remove('megaplay-mode');
+        ['roCtrl','roCenterPlay','roFlashL','roFlashR'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.visibility = '';
+        });
 
         roShowSpinner(false);
         document.getElementById('roCenterPlay').classList.add('visible');
@@ -1942,169 +1968,266 @@
         }
     }
 
-    // ===== PLAYER INTEGRATION (v10.0) =====
-    let playerIntegrationModule = null;
-
-    // Quality Menu Functions
-    function roToggleQualityMenu() {
-        const dropdown = document.getElementById('roQualityDropdown');
-        if (!dropdown) return;
-        dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    // ===== V10 SKIP PROMPT =====
+    // ===== V10 TIMEUPDATE HANDLER =====
+    function v10OnTimeUpdate() {
+        if (!v10Cache) return;
+        const t = document.getElementById('roVideoEl').currentTime;
+        roRenderSubtitle(t);
     }
 
-    // Close quality dropdown when clicking outside
-    document.addEventListener('click', e => {
-        const wrap = document.getElementById('roQualityMenuWrap');
-        if (wrap && !wrap.contains(e.target)) {
-            const dd = document.getElementById('roQualityDropdown');
-            if (dd) dd.style.display = 'none';
-        }
-    });
+    // ===== V10 STALL WATCHDOG =====
+    function v10StartWatchdog() {
+        clearInterval(v10StallTimer);
+        const video = document.getElementById('roVideoEl');
+        v10LastTime = video.currentTime;
+        v10StallTimer = setInterval(() => {
+            if (!video.paused && !video.ended && video.currentTime === v10LastTime) {
+                console.warn('[v10] Stall — trying next server');
+                v10NextServer();
+            }
+            v10LastTime = video.currentTime;
+        }, 5000);
+    }
 
-    const playerInstance = {
-        getVideoElement: () => document.getElementById('roVideoEl'),
-        showLoading: (show) => {
-            roShowSpinner(show);
+    // ===== V10 SERVER FALLBACK =====
+    function v10NextServer() {
+        clearInterval(v10StallTimer);
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        if (!v10Cache || v10SrvIdx + 1 >= v10Cache.servers.length) {
+            // All servers exhausted — show error in the existing status badge
             const badge = document.getElementById('streamStatusBadge');
-            if (!badge) return;
-            if (show) {
-                badge.textContent = 'Loading...';
-                badge.className = 'stream-status loading';
-            } else {
-                badge.textContent = '● Live';
-                badge.className = 'stream-status live';
-            }
-        },
-        showError: (msg) => {
-            const badge = document.getElementById('streamStatusBadge');
-            if (badge) {
-                badge.textContent = '⚠ Error';
-                badge.className = 'stream-status error';
-            }
-            // Show error in player area
-            const pw = document.getElementById('playerWrapper');
-            const errorDiv = document.createElement('div');
-            errorDiv.style = "position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;color:white;padding:20px;text-align:center;";
-            errorDiv.innerHTML = `<h2 style="color:#ff006e;margin-bottom:10px;">Playback Error</h2><p style="margin-bottom:20px;">${msg}</p><button onclick="location.reload()" style="background:#ff006e;border:none;color:white;padding:10px 20px;border-radius:4px;cursor:pointer;font-weight:bold;">RETRY</button>`;
-            pw.appendChild(errorDiv);
-        },
-        updateServerList: (servers, activeIndex, onSelect) => {
-            const container = document.querySelector('.server-row');
-            if (!container) return;
-            // Clear existing buttons except the label
-            const label = container.querySelector('.server-row-label');
-            container.innerHTML = '';
-            if (label) container.appendChild(label);
-            
-            servers.forEach((server, index) => {
-                const btn = document.createElement('button');
-                btn.className = `srv-pill ${index === activeIndex ? 'active' : ''}`;
-                btn.textContent = `▶ ${server.serverName}`;
-                btn.onclick = () => {
-                    // Update active state visually
-                    container.querySelectorAll('.srv-pill').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    onSelect(index);
-                };
-                container.appendChild(btn);
+            badge.textContent = '⚠ All servers unavailable. Please try again.';
+            badge.className   = 'stream-status error';
+            roShowSpinner(false);
+            return;
+        }
+        v10SrvIdx++;
+        v10QualIdx = 0;
+        const saved = document.getElementById('roVideoEl').currentTime;
+        v10AttachHLS(saved);
+    }
+
+    // ===== V10 HLS ATTACH =====
+    // Wires HLS.js (or native Safari) to the video element for the active server+quality.
+    function v10AttachHLS(resumeTime) {
+        resumeTime = resumeTime || 0;
+        const server   = v10Cache.servers[v10SrvIdx];
+        const quality  = server.qualities[v10QualIdx] || server.qualities[0];
+        const url      = quality.url;
+        const badge    = document.getElementById('streamStatusBadge');
+        const video    = document.getElementById('roVideoEl');
+        const pw       = document.getElementById('playerWrapper');
+        const iframeWrap = document.getElementById('roIframeWrap');
+
+        // Detect Megaplay server by referer
+        const isMegaplay = server.referer && server.referer.includes('megaplay.buzz');
+
+        clearInterval(v10StallTimer);
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+
+        badge.textContent = 'Loading ' + server.serverName + '...';
+        badge.className   = 'stream-status loading';
+        roShowSpinner(true);
+
+        if (isMegaplay) {
+            // ── Megaplay: iframe embed, hide custom HCR overlay controls ──────
+            video.pause(); video.src = ''; video.style.display = 'none';
+            iframeWrap.innerHTML = '';
+            // Hide HCR-specific overlay controls — they don't apply to the iframe
+            ['roCtrl','roCenterPlay','roFlashL','roFlashR'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.visibility = 'hidden';
             });
-            // Re-add status badge
-            const badge = document.createElement('span');
-            badge.id = 'streamStatusBadge';
-            badge.className = 'stream-status';
-            container.appendChild(badge);
-        },
-        updateQualityList: (qualities, activeIndex, onSelect) => {
-            const btn = document.getElementById('roQualityBtn');
-            const dropdown = document.getElementById('roQualityDropdown');
-            if (!btn || !dropdown) return;
-
-            if (qualities.length === 0) {
-                btn.style.display = 'none';
-                dropdown.style.display = 'none';
-                return;
-            }
-
-            btn.style.display = 'flex';
-            dropdown.innerHTML = qualities.map((q, index) => {
-                const isActive = index === activeIndex;
-                return `<div class="ro-quality-item ${isActive ? 'active' : ''}" onclick="this.parentElement.style.display='none'; window._onQualitySelect(${index})">
-                    ${q.label}
-                </div>`;
-            }).join('');
-            window._onQualitySelect = onSelect;
-        },
-        setAudioType: (type, onSelect) => {
-            const subBtn = document.getElementById('subBtn');
-            const dubBtn = document.getElementById('dubBtn');
-            if (subBtn) {
-                subBtn.classList.toggle('active', type === 'sub');
-                subBtn.onclick = () => onSelect('sub');
-            }
-            if (dubBtn) {
-                dubBtn.classList.toggle('active', type === 'dub');
-                dubBtn.onclick = () => onSelect('dub');
-            }
-        },
-        setSubtitles: (tracks) => {
-            roAllSubtitleTracks = tracks.map(t => ({ label: t.label, file: t.src, default: t.isDefault }));
-            const defaultTrack = roAllSubtitleTracks.find(t => t.default) || roAllSubtitleTracks[0];
-            if (defaultTrack) {
-                roSwitchSubtitle(defaultTrack.file, defaultTrack.label);
-            } else {
-                roUpdateSubMenu();
-            }
-        },
-        showSkipButton: (type, visible, onSkip) => {
-            const pw = document.getElementById('playerWrapper');
-            let btn = document.getElementById(`roSkipBtn-${type}`);
-            if (visible) {
-                if (!btn) {
-                    btn = document.createElement('button');
-                    btn.id = `roSkipBtn-${type}`;
-                    btn.className = 'ro-skip-btn';
-                    btn.textContent = `Skip ${type}`;
-                    btn.onclick = onSkip;
-                    pw.appendChild(btn);
-                }
-                btn.style.display = 'block';
-            } else if (btn) {
-                btn.style.display = 'none';
-            }
-        },
-        isSkipButtonVisible: (type) => {
-            const btn = document.getElementById(`roSkipBtn-${type}`);
-            return btn && btn.style.display === 'block';
+            pw.classList.add('megaplay-mode');
+            const epId  = currentStreamData.id;
+            iframeWrap.innerHTML = `<iframe src="https://megaplay.buzz/stream/s-2/${epId}/sub"
+                allowfullscreen allow="autoplay; encrypted-media; fullscreen"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-downloads"
+                referrerpolicy="no-referrer" loading="lazy"
+                style="pointer-events:auto;"></iframe>`;
+            iframeWrap.style.display = 'block';
+            badge.textContent = '● ' + server.serverName;
+            badge.className   = 'stream-status live';
+            roShowSpinner(false);
+            return;
         }
-    };
+
+        // ── HCR / standard HLS path ───────────────────────────────────────────
+        pw.classList.remove('megaplay-mode');
+        iframeWrap.innerHTML = ''; iframeWrap.style.display = 'none';
+        // Restore HCR overlay controls
+        ['roCtrl','roCenterPlay','roFlashL','roFlashR'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.visibility = '';
+        });
+        video.style.display = 'block';
+
+        // Detach old timeupdate listener before attaching fresh one
+        video.removeEventListener('timeupdate', v10OnTimeUpdate);
+        video.addEventListener('timeupdate', v10OnTimeUpdate);
+
+        // ── 4-SECOND LOAD TIMEOUT ─────────────────────────────────────────────
+        // If MANIFEST_PARSED hasn't fired within 4s, auto-switch to next server.
+        let v10LoadTimeout = setTimeout(() => {
+            console.warn('[v10] 4s load timeout — switching to next server');
+            v10NextServer();
+        }, 4000);
+
+        const onReady = () => {
+            clearTimeout(v10LoadTimeout); // CDN responded in time — cancel timeout
+            if (resumeTime > 0) video.currentTime = resumeTime;
+            video.play().catch(() => {});
+            badge.textContent = '● ' + server.serverName;
+            badge.className   = 'stream-status live';
+            roShowSpinner(false);
+            roShowControls();
+            document.getElementById('roCtrlLabel').textContent =
+                currentStreamData.title + '  ·  EP ' + currentStreamData.ep;
+            v10StartWatchdog();
+        };
+
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            hlsInstance = new Hls({
+                enableWorker:         true,
+                lowLatencyMode:       false,
+                maxBufferLength:      20,
+                maxMaxBufferLength:   60,
+                backBufferLength:     60,
+                startLevel:           -1,
+                fragLoadingTimeOut:   10000,
+                manifestLoadingTimeOut: 8000,
+                fragLoadingMaxRetry:  2,
+                manifestLoadingMaxRetry: 2,
+                xhrSetup(xhr) {
+                    if (server.referer) xhr.setRequestHeader('Referer', server.referer);
+                }
+            });
+            hlsInstance.loadSource(url);
+            hlsInstance.attachMedia(video);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, onReady);
+            hlsInstance.on(Hls.Events.ERROR, (_, d) => {
+                console.warn('[v10] HLS error:', d.type, d.details, d.fatal, d.response?.code);
+                if (d.fatal || [403, 404].includes(d.response?.code)) {
+                    clearTimeout(v10LoadTimeout);
+                    v10NextServer(); return;
+                }
+                if (d.type === Hls.ErrorTypes.NETWORK_ERROR) hlsInstance.startLoad();
+                else if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hlsInstance.recoverMediaError();
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Native Safari HLS
+            video.src = url;
+            video.addEventListener('loadedmetadata', () => {
+                clearTimeout(v10LoadTimeout);
+                onReady();
+            }, { once: true });
+        } else {
+            clearTimeout(v10LoadTimeout);
+            badge.textContent = '⚠ HLS not supported';
+            badge.className   = 'stream-status error';
+            roShowSpinner(false);
+        }
+    }
 
     // ===== LOAD STREAM =====
+    // Fetches API v10 once per episode+type (cached), then hands off to v10AttachHLS.
     async function loadStream() {
-        if (!playerIntegrationModule) {
+        const episodeId  = currentStreamData.id;
+        const badge      = document.getElementById('streamStatusBadge');
+        const video      = document.getElementById('roVideoEl');
+        const iframeWrap = document.getElementById('roIframeWrap');
+        const pw         = document.getElementById('playerWrapper');
+
+        badge.textContent = 'Loading...';
+        badge.className   = 'stream-status loading';
+
+        // Tear down previous playback
+        clearInterval(v10StallTimer);
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        video.pause();
+        video.src = ''; video.style.display = 'none';
+        iframeWrap.innerHTML = ''; iframeWrap.style.display = 'none';
+        pw.classList.remove('megaplay-mode');
+        roShowSpinner(true);
+        document.getElementById('roCenterPlay').classList.add('visible');
+
+        // Clear subtitle state
+        roSubtitleCues = []; roSubActive = false;
+        roAllSubtitleTracks = []; roActiveSubLabel = null;
+        document.getElementById('roSubtitleOverlay').innerHTML = '';
+        roUpdateSubMenu();
+
+        // Cache key: re-fetch only when episode or sub/dub type changes
+        const cacheKey = episodeId + '_sub';
+        const needsFetch = !v10Cache || v10Cache._cacheKey !== cacheKey;
+
+        if (needsFetch) {
+            // Reset server/quality position for fresh episode or type switch
+            v10SrvIdx  = 0;
+            v10QualIdx = 0;
             try {
-                // We use dynamic import to load the module
-                const mod = await import('./player-integration.js');
-                playerIntegrationModule = mod;
-            } catch (e) {
-                console.error("Failed to load player-integration.js", e);
-                // Fallback to direct loading if needed or show error
-                playerInstance.showError("Failed to load player integration module.");
+                badge.textContent = 'Fetching stream data...';
+                const res  = await fetch(`${API_BASE}/api/v10/stream/${episodeId}?type=sub`);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                v10Cache = await res.json();
+                v10Cache._cacheKey = cacheKey; // tag for cache invalidation check
+
+                console.log('[v10] API response:', v10Cache);
+            } catch(err) {
+                console.warn('[v10] API fetch failed:', err.message);
+                badge.textContent = '⚠ Could not load stream. Please retry.';
+                badge.className   = 'stream-status error';
+                roShowSpinner(false);
                 return;
             }
         }
-        
-        const video = document.getElementById('roVideoEl');
-        video.style.display = 'block';
-        roShowControls();
-        document.getElementById('roCtrlLabel').textContent = 
-            `${currentStreamData.title}  ·  EP ${currentStreamData.ep}`;
-            
-        playerIntegrationModule.init(currentStreamData.id, playerInstance);
+        // On manual server switch (needsFetch=false), v10SrvIdx is already set by switchServer
+
+        // Load subtitles from v10 response
+        // For DUB: the audio track itself is the translation — don't auto-load
+        // external VTT subs (they are typically Japanese/sub captions that clash).
+        if (v10Cache.subtitles && v10Cache.subtitles.length > 0) {
+            roAllSubtitleTracks = v10Cache.subtitles.map(s => ({
+                file: s.file, label: s.label, default: s.default
+            }));
+            const def = roAllSubtitleTracks.find(t => t.default) ||
+                        roAllSubtitleTracks.find(t => t.label && t.label.toLowerCase().includes('english')) ||
+                        roAllSubtitleTracks[0];
+            if (def) {
+                roActiveSubLabel = def.label;
+                roUpdateSubMenu();
+                loadVTTSubtitles(def.file);
+            }
+        } else {
+            roUpdateSubMenu();
+        }
+
+        // Hand off to HLS attacher
+        v10AttachHLS(0);
     }
 
-    // These are now handled by player-integration.js via playerInstance callbacks
-    function switchServer(server) { /* Legacy - now handled by playerInstance.updateServerList */ }
-    function switchAudioTrack(track) { /* Legacy - now handled by playerInstance.setAudioType */ }
+    // ===== SWITCH SERVER =====
+    function switchServer(server) {
+        const idx = server - 1;
+        if (!v10Cache || !currentStreamData) return;
+        if (idx === v10SrvIdx) return;
+        v10SrvIdx  = idx;
+        v10QualIdx = 0;
+        const saved = document.getElementById('roVideoEl').currentTime;
+        v10AttachHLS(saved); // switch in-place without re-fetching API
+    }
+
+    // ===== SWITCH SUB / DUB — internal only, DUB button removed from UI =====
+    function switchAudioTrack(track) {
+        if (track === currentAudioTrack) return;
+        currentAudioTrack = track;
+        document.getElementById('subBtn').classList.toggle('active', track === 'sub');
+        v10Cache   = null;
+        v10SrvIdx  = 0;
+        v10QualIdx = 0;
+        if (currentStreamData) loadStream();
+    }
 
     // ===== UPDATE PLAYER INFO UI =====
     function updatePlayerUI() {
@@ -2115,9 +2238,6 @@
         document.getElementById('prevBtn').disabled = !hasPrev;
         document.getElementById('nextBtn').disabled = !hasNext;
         document.getElementById('subBtn').classList.toggle('active', currentAudioTrack === 'sub');
-        document.getElementById('dubBtn').classList.toggle('active', currentAudioTrack === 'dub');
-        document.getElementById('srv1Btn').classList.toggle('active', currentServer === 1);
-        document.getElementById('srv2Btn').classList.toggle('active', currentServer === 2);
     }
 
     // ===== RENDER EPISODES LIST =====
@@ -2176,12 +2296,8 @@
         // Exit fullscreen first if active
         if (roIsFullscreen) roExitFullscreen();
 
-        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
-        const video = document.getElementById('roVideoEl');
-        video.pause(); video.src = ''; video.style.display = 'none';
-        document.getElementById('roIframeWrap').innerHTML = '';
-        document.getElementById('roIframeWrap').style.display = 'none';
-        document.getElementById('playerWrapper').classList.remove('megaplay-mode');
+        // Full teardown via roPlayerReset — clears v10 state, HLS, controls
+        roPlayerReset();
 
         document.getElementById('streamingSection').style.display    = 'none';
         document.getElementById('searchResultsSection').style.display= 'none';
@@ -2190,14 +2306,6 @@
         document.getElementById('searchInput').value = '';
         viewAllMode = false;
         episodesListRendered = false;
-
-        // Clear subtitles
-        roSubtitleCues = [];
-        roSubActive    = false;
-        roAllSubtitleTracks = [];
-        roActiveSubLabel    = null;
-        document.getElementById('roSubtitleOverlay').innerHTML = '';
-        roUpdateSubMenu();
     }
 
     function closeOverlay() { document.getElementById('episodeOverlay').classList.remove('active'); }
@@ -2381,15 +2489,13 @@
     document.getElementById('roVideoEl').addEventListener('canplay', () => roShowSpinner(false));
     document.getElementById('roVideoEl').addEventListener('playing', () => roShowSpinner(false));
 
-    // Time / progress + subtitle render
+    // Time / progress update (subtitle rendering handled by v10OnTimeUpdate)
     document.getElementById('roVideoEl').addEventListener('timeupdate', () => {
         const v = roVideo();
         if (!roIsDragging && v.duration) {
             roApplyProgress((v.currentTime / v.duration) * 100);
             document.getElementById('roCurTime').textContent = roFormatTime(v.currentTime);
         }
-        // Render subtitle overlay
-        if (roSubActive) roRenderSubtitle(v.currentTime);
     });
     document.getElementById('roVideoEl').addEventListener('loadedmetadata', () => {
         document.getElementById('roDur').textContent = roFormatTime(roVideo().duration);
